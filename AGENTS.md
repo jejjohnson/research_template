@@ -24,7 +24,7 @@ research_template/
 ├── data/             # Data directories (managed by DVC)
 ├── docs/             # MyST documentation
 ├── marimo_notebooks/ # Marimo reactive notebooks
-├── notebooks/        # Jupyter notebooks
+├── notebooks/        # Jupytext percent-format .py scripts (no .ipynb in repo)
 ├── results/          # Experiment results (managed by DVC)
 ├── scripts/          # Entry point scripts
 ├── src/myproject/    # Source package

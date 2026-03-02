@@ -16,6 +16,7 @@
 - 📊 **[DVC](https://dvc.org)** for data versioning and ML pipeline management
 - ⚙️ **[Hydra](https://hydra.cc)** + **[hydra-zen](https://mit-ll-responsible-ai.github.io/hydra-zen/)** for type-safe configuration management
 - 📓 **[JupyterLab](https://jupyterlab.readthedocs.io)** with LSP, Git integration, and MyST rendering
+- 📝 **[Jupytext](https://jupytext.readthedocs.io)** — notebooks stored as diff-friendly `.py` files, convert to `.ipynb` on demand
 - 🌊 **[Marimo](https://marimo.io)** reactive notebook environment
 - 📚 **[MyST-MD](https://mystmd.org)** for publication-quality documentation
 - 🔍 **[Ruff](https://docs.astral.sh/ruff/)** for fast linting and formatting
@@ -178,6 +179,23 @@ Docs are automatically deployed to GitHub Pages on every push to `main`.
 
 ## Notebook Environments
 
+Notebooks are stored as [Jupytext](https://jupytext.readthedocs.io) percent-format
+`.py` scripts — not `.ipynb` files. This keeps the repository clean, diff-friendly,
+and free of committed cell outputs. Generated `.ipynb` files are gitignored.
+
+### Converting to .ipynb
+
+```bash
+# Convert all notebooks/ scripts to .ipynb
+pixi run notebooks-to-ipynb
+
+# Convert a single file
+pixi run jupytext --to notebook notebooks/01_eda.py
+
+# Keep .py and .ipynb in sync while editing (paired mode)
+pixi run -e jupyterlab jupytext --set-formats py:percent,ipynb notebooks/01_eda.py
+```
+
 ### JupyterLab
 
 Full-featured JupyterLab with LSP, Git integration, MyST rendering, and spell checking:
@@ -194,8 +212,8 @@ Reactive, reproducible notebooks in pure Python:
 pixi run -e marimo marimo-edit
 ```
 
-Marimo notebooks in `marimo_notebooks/` are stored as `.py` files, making
-them diff-friendly and importable as regular Python modules.
+Marimo notebooks in `marimo_notebooks/` are also stored as `.py` files,
+making them diff-friendly and importable as regular Python modules.
 
 ## CI/CD Workflows
 
@@ -206,7 +224,7 @@ them diff-friendly and importable as regular Python modules.
 | `typecheck.yml` | push/PR | ty type checking |
 | `pages.yml` | push to main | Build + deploy MyST docs |
 | `dvc-check.yml` | DVC file changes | Validate DVC pipeline |
-| `notebooks.yml` | notebook changes | Validate notebook JSON |
+| `notebooks.yml` | notebook changes | Validate Jupytext .py notebooks |
 | `reproducibility.yml` | weekly schedule | Full `dvc repro` |
 | `experiment-report.yml` | PR | DVC metrics diff comment |
 | `citation.yml` | CITATION.cff changes | Validate citation file |

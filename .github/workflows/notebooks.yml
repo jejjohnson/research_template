@@ -14,22 +14,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate notebook JSON
+      - uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          pixi-version: latest
+          cache: true
+      - name: Validate Jupytext notebooks are parseable
         run: |
-          for nb in $(find notebooks -name "*.ipynb"); do
+          for nb in $(find notebooks -name "*.py"); do
             echo "Validating $nb..."
-            python -m json.tool "$nb" > /dev/null && echo "  OK" || (echo "  FAILED" && exit 1)
+            python -c "
+import ast, sys
+with open('$nb') as f:
+    src = f.read()
+try:
+    ast.parse(src)
+    print('  OK')
+except SyntaxError as e:
+    print(f'  FAILED: {e}', file=sys.stderr)
+    sys.exit(1)
+"
           done
-      - name: Warn about notebook outputs
+      - name: Warn if any .ipynb files are committed
         run: |
-          for nb in $(find notebooks -name "*.ipynb"); do
-            outputs=$(python -c "
-          import json, sys
-          nb = json.load(open('$nb'))
-          count = sum(len(c.get('outputs', [])) for c in nb['cells'])
-          sys.exit(0 if count == 0 else 1)
-          " 2>/dev/null)
-            if [ $? -ne 0 ]; then
-              echo "::warning file=$nb::Notebook has committed outputs. Run nbstripout to remove them."
-            fi
-          done
+          ipynb_files=$(find notebooks -name "*.ipynb" 2>/dev/null || true)
+          if [ -n "$ipynb_files" ]; then
+            echo "::warning::Committed .ipynb files found. Notebooks should be stored as Jupytext .py files only."
+            echo "$ipynb_files"
+          fi
