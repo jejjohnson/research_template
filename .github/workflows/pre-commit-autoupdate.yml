@@ -1,29 +1,35 @@
-name: Pre-commit Autoupdate
+name: Update pre-commit hooks
 
 on:
   schedule:
-    - cron: '0 6 * * 1'  # Every Monday at 6 AM UTC
+    - cron: "0 6 * * 1"  # Every Monday at 6am UTC
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 jobs:
   autoupdate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.8.1
+
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
           pixi-version: latest
           cache: true
+
       - name: Run pre-commit autoupdate
         run: pixi run -e default pre-commit autoupdate
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
+
+      - uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: 'chore: update pre-commit hooks'
-          title: 'chore: update pre-commit hooks'
-          body: 'Automated pre-commit hook updates.'
-          branch: chore/pre-commit-autoupdate
+          commit-message: "chore: update pre-commit hooks"
+          title: "chore: update pre-commit hooks"
+          branch: "chore/pre-commit-autoupdate"
+          labels: "dependencies"
+          body: |
+            Automated pre-commit hook version update.
+            Triggered by the weekly `pre-commit-autoupdate` workflow.
