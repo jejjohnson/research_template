@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from myproject.data.loading import load_processed_data, load_raw_data
 
 

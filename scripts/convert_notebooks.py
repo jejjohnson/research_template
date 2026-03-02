@@ -89,7 +89,10 @@ def main() -> None:
         "--to",
         default="notebook",
         metavar="FORMAT",
-        help="Target Jupytext format, e.g. 'notebook' (.ipynb) or 'script' (default: notebook)",
+        help=(
+            "Target Jupytext format, e.g. 'notebook' (.ipynb) or 'script'"
+            " (default: notebook)"
+        ),
     )
     parser.add_argument(
         "--pattern",

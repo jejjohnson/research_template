@@ -30,7 +30,7 @@ class Trainer:
             Dictionary of training metrics.
         """
         metrics = {"train_loss": [], "val_loss": []}
-        for epoch in range(self.epochs):
+        for _epoch in range(self.epochs):
             # TODO: Implement training step
             train_loss = 0.0
             metrics["train_loss"].append(train_loss)

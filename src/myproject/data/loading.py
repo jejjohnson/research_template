@@ -15,6 +15,8 @@ def load_raw_data(data_dir: str | Path) -> dict:
         Dictionary containing loaded data arrays.
     """
     data_dir = Path(data_dir)
+    if not data_dir.exists():
+        raise FileNotFoundError(f"Raw data directory not found: {data_dir}")
     # TODO: Implement data loading logic
     return {"data": None, "labels": None}
 
@@ -29,5 +31,7 @@ def load_processed_data(data_dir: str | Path) -> dict:
         Dictionary containing train/val/test splits.
     """
     data_dir = Path(data_dir)
+    if not data_dir.exists():
+        raise FileNotFoundError(f"Processed data directory not found: {data_dir}")
     # TODO: Implement processed data loading logic
     return {"train": None, "val": None, "test": None}

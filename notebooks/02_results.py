@@ -35,7 +35,6 @@ import json
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import numpy as np
 
 # %% [markdown]
 # ## Load Metrics
@@ -49,7 +48,10 @@ if metrics_path.exists():
     print("Loaded metrics:", metrics)
 else:
     # Placeholder metrics when no experiment has been run yet
-    metrics = {"train_loss": [1.0, 0.8, 0.6, 0.4, 0.3], "val_loss": [1.1, 0.9, 0.7, 0.5, 0.4]}
+    metrics = {
+        "train_loss": [1.0, 0.8, 0.6, 0.4, 0.3],
+        "val_loss": [1.1, 0.9, 0.7, 0.5, 0.4],
+    }
     print("No metrics file found — using placeholder data.")
 
 # %% [markdown]
@@ -82,6 +84,8 @@ if train_loss:
 if val_loss:
     print(f"Final val loss:   {val_loss[-1]:.4f}")
 
-other_metrics = {k: v for k, v in metrics.items() if k not in {"train_loss", "val_loss"}}
+other_metrics = {
+    k: v for k, v in metrics.items() if k not in {"train_loss", "val_loss"}
+}
 for key, value in other_metrics.items():
     print(f"{key}: {value}")

@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+import csv
+import json
+from pathlib import Path
+
 import hydra
+from hydra.utils import get_original_cwd
 from omegaconf import DictConfig
 
 from myproject.models.baseline import BaselineModel
@@ -47,7 +52,29 @@ def main(cfg: DictConfig) -> None:
     # Run training (data loading omitted for placeholder)
     metrics = trainer.train(train_data=None)
 
-    print(f"Training complete. Final metrics: {metrics}")
+    # Write DVC-tracked outputs to project root (Hydra may change CWD)
+    project_root = Path(get_original_cwd())
+
+    metrics_path = project_root / "results" / "metrics" / "train_metrics.json"
+    metrics_path.parent.mkdir(parents=True, exist_ok=True)
+    summary = {
+        "train_loss": metrics["train_loss"][-1] if metrics["train_loss"] else 0.0,
+        "val_loss": metrics["val_loss"][-1] if metrics["val_loss"] else None,
+        "epochs": cfg.training.epochs,
+        "lr": cfg.training.lr,
+    }
+    metrics_path.write_text(json.dumps(summary, indent=2))
+
+    loss_curve_path = project_root / "results" / "figures" / "loss_curve.csv"
+    loss_curve_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(loss_curve_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["epoch", "train_loss", "val_loss"])
+        for i, train_loss in enumerate(metrics["train_loss"]):
+            val_loss = metrics["val_loss"][i] if i < len(metrics["val_loss"]) else ""
+            writer.writerow([i, train_loss, val_loss])
+
+    print(f"Training complete. Metrics written to {metrics_path}")
 
 
 if __name__ == "__main__":
