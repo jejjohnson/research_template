@@ -1,0 +1,32 @@
+name: Validate Notebooks
+
+on:
+  pull_request:
+    paths:
+      - 'notebooks/**'
+      - 'docs/tutorials/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate notebook JSON
+        run: |
+          for nb in $(find notebooks -name "*.ipynb"); do
+            echo "Validating $nb..."
+            python -m json.tool "$nb" > /dev/null && echo "  OK" || (echo "  FAILED" && exit 1)
+          done
+      - name: Warn about notebook outputs
+        run: |
+          for nb in $(find notebooks -name "*.ipynb"); do
+            outputs=$(python -c "
+          import json, sys
+          nb = json.load(open('$nb'))
+          count = sum(len(c.get('outputs', [])) for c in nb['cells'])
+          sys.exit(0 if count == 0 else 1)
+          " 2>/dev/null)
+            if [ $? -ne 0 ]; then
+              echo "::warning file=$nb::Notebook has committed outputs. Run nbstripout to remove them."
+            fi
+          done
