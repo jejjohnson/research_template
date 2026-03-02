@@ -24,7 +24,6 @@ applyTo: "src/**/*.py,tests/**/*.py"
 | Purpose | Preferred Package |
 |---------|-------------------|
 | Logging | `loguru` |
-| CLI | `cyclopts` |
 | Data containers | `dataclasses` (stdlib) or `attrs` |
 | Configuration | `hydra-core` / `omegaconf` |
 | Path handling | `pathlib` (stdlib) |

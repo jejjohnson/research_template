@@ -204,7 +204,7 @@ For multi-step tasks, state a brief plan:
 
 1. **Tests** – `pixi run test` must have 0 failures.
 2. **Lint** – `pixi run lint` must report no issues.
-3. **Format** – `pixi run format` must report no files to reformat.
+3. **Format** – `pixi run format` must leave the working tree clean (no diff) after formatting.
 4. **Type checks** – `pixi run typecheck` must report no errors in changed files.
 
 ## Pull Request Descriptions
