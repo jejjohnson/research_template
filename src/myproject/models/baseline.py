@@ -16,7 +16,7 @@ class BaselineModel:
         self.num_layers = num_layers
         # TODO: Initialize model weights
 
-    def forward(self, x):
+    def forward(self, x: object) -> object:
         """Forward pass.
 
         Args:
