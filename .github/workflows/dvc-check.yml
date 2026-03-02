@@ -10,6 +10,9 @@ on:
       - 'scripts/**'
       - 'configs/**'
 
+permissions:
+  contents: read
+
 jobs:
   dvc-check:
     runs-on: ubuntu-latest
