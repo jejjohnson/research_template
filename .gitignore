@@ -99,7 +99,6 @@ htmlcov/
 
 # Pixi
 .pixi/
-pixi.lock
 
 # Misc
 *.log
