@@ -105,8 +105,7 @@ is opened so GitHub's UI and automation pick up the hierarchy.
                  make gh-block ISSUE=<other#> BLOCKED_BY=<this#>
   Related:     → Prose only; no native feature.
 
-Helper: `.github/scripts/link-issues.sh` or the `link-gh-issues` Claude
-Code skill.
+Helper: `.github/scripts/link-issues.sh`.
 -->
 - Parent (theme epic): #
 - Blocked by: #

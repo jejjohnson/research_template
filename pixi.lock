@@ -8893,7 +8893,7 @@ packages:
 - pypi: ./
   name: my-research-project
   version: 0.1.0
-  sha256: 96cf17226e45e150d6d6d51ef422549c5d819e286009f5be55cb049006caaa17
+  sha256: f3de6a6996d87d98262724999bc7de1580f7ba2cb224a09091c59b00a1a903f9
   requires_python: '>=3.12'
 - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.1.0-pyha770c72_0.conda
   sha256: 6ed158e4e5dd8f6a10ad9e525631e35cee8557718f83de7a4e3966b1f772c4b1

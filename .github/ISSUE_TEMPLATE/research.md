@@ -187,7 +187,7 @@ Apply native GitHub links after the issue is opened.
   Blocked by:  → make gh-block ISSUE=<this#> BLOCKED_BY=<other#>
   Related:     → Prose only; no native feature.
 
-Helper: `.github/scripts/link-issues.sh` or the `link-gh-issues` skill.
+Helper: `.github/scripts/link-issues.sh`.
 -->
 - Parent (theme epic, if any): #
 - Blocked by: #

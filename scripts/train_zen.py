@@ -15,6 +15,7 @@ from myproject.models.baseline import BaselineModel
 from myproject.trainers.trainer import Trainer
 from myproject.utils.reproducibility import seed_everything
 
+
 # --- Build structured configs from Python classes ---
 # builds() automatically generates a dataclass config from a class/function
 ModelConfig = builds(

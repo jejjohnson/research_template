@@ -335,7 +335,6 @@ When the draft is ready to become real GitHub issues:
         `make gh-sub PARENT=<parent#> CHILDREN="<child1#> <child2#> ..."`
       - Blocked-by:
         `make gh-block ISSUE=<this#> BLOCKED_BY=<other#>`
-      - For bulk application, see `.github/scripts/link-issues.sh` or
-        the `link-gh-issues` Claude Code skill.
+      - For bulk application, see `.github/scripts/link-issues.sh`.
 - [ ] Either delete this file or keep it as historical record in
       `.plans/archive/`.

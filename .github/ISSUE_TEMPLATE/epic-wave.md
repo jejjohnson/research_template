@@ -1,6 +1,6 @@
 ---
 name: Epic — Wave (L1)
-about: A release-scoped mega-epic grouping theme epics under one milestone. See docs/contributing.md for the two-layer epic model.
+about: A release-scoped mega-epic grouping theme epics under one milestone. See CONTRIBUTING.md for the two-layer epic model.
 title: "[EPIC] Wave N: <title>"
 labels: ["type:epic-wave"]
 ---
@@ -63,7 +63,7 @@ After opening, apply native links:
                (make gh-sub PARENT=<this#> CHILDREN="<theme#> <theme#>")
   Blocked by:  make gh-block ISSUE=<this#> BLOCKED_BY=<prior-wave#>
   Blocks:      make gh-block ISSUE=<next-wave#> BLOCKED_BY=<this#>
-Helper: `.github/scripts/link-issues.sh` or the `link-gh-issues` skill.
+Helper: `.github/scripts/link-issues.sh`.
 -->
 - Blocked by: #
 - Blocks: #

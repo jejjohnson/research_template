@@ -180,13 +180,13 @@ gh-labels: ## Bootstrap the GitHub label taxonomy
 gh-sub: ## Link CHILDREN as sub-issues of PARENT
 	@test -n "$(PARENT)"   || { echo "error: PARENT=<issue-number> required" >&2; exit 1; }
 	@test -n "$(CHILDREN)" || { echo "error: CHILDREN=\"<a> <b> ...\" required" >&2; exit 1; }
-	bash .github/scripts/link-issues.sh sub $(PARENT) $(CHILDREN)
+	bash .github/scripts/link-issues.sh sub '$(PARENT)' $(foreach c,$(CHILDREN),'$(c)')
 
 gh-block: ## Mark ISSUE as blocked by BLOCKED_BY
 	@test -n "$(ISSUE)"      || { echo "error: ISSUE=<issue-number> required" >&2; exit 1; }
 	@test -n "$(BLOCKED_BY)" || { echo "error: BLOCKED_BY=<issue-number> required" >&2; exit 1; }
-	bash .github/scripts/link-issues.sh block $(ISSUE) $(BLOCKED_BY)
+	bash .github/scripts/link-issues.sh block '$(ISSUE)' '$(BLOCKED_BY)'
 
 gh-show: ## Show parent / sub-issues / blocking state for ISSUE
 	@test -n "$(ISSUE)" || { echo "error: ISSUE=<issue-number> required" >&2; exit 1; }
-	bash .github/scripts/link-issues.sh show $(ISSUE)
+	bash .github/scripts/link-issues.sh show '$(ISSUE)'
