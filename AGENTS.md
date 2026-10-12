@@ -8,7 +8,8 @@ Standing instructions for **every** coding agent working in this repository
 > projects. Passages that describe the bundled example (the `myproject`
 > package, its configs, its DVC stages, its notebooks) start with an HTML
 > comment `<!-- template-example: … -->`; after adopting the template, rewrite each
-> of them from your own code. List them with
+> of them from your own code (the `adopt-template` skill walks through
+> the whole adoption). List them with
 > `grep -rnE '(<!--|#) template-example:' --exclude-dir=.git --exclude-dir=.venv --exclude-dir=.pixi .`.
 > Everything without the marker is a rule for every project made from the
 > template.
@@ -117,6 +118,8 @@ in the package, a script or a notebook — find out whether it exists:
 
 ## The contracts
 
+The step-by-step for each is a skill (see "Recipes").
+
 ### 1. The package: pure, typed, tested
 
 - Reusable code lives in `src/<package>/`, one concept per subpackage; the
@@ -216,6 +219,31 @@ in the package, a script or a notebook — find out whether it exists:
 Nothing tests `Trainer`, `seed_everything` or the scripts yet, and nothing
 checks that a config group provides the keys a script reads: review those
 by hand.
+
+## Recipes
+
+Step-by-step recipes for the common jobs live as plain Markdown in
+`.claude/skills/<name>/SKILL.md` (Claude Code loads them automatically; any
+agent can read and follow them), and two read-only review checklists in
+`.claude/agents/`:
+
+| Job | Recipe |
+|---|---|
+| Turn a fresh copy of the template into your project | `adopt-template` |
+| Add an experiment: a config, a DVC stage, metrics, a sweep | `add-experiment` |
+| Add a dataset: DVC-tracked raw data, a loader, a data config, splits | `add-dataset` |
+| Add a model: a class, a config-group option, the training wiring | `add-model` |
+| Add or update a jupytext or marimo notebook | `add-notebook` |
+| Reproduce the results, or debug a pipeline that does not reproduce | `reproduce-results` |
+| Write up methods and results in the MyST docs, cite, update `CITATION.cff` | `write-up-results` |
+| Verify before a PR | `pre-pr-check` |
+| Review a change | `myproject-review` (+ the read-only `.claude/agents/reuse-reviewer.md` and `reproducibility-reviewer.md`) |
+| Write a squash commit message | `squash-commit` |
+| Open or link GitHub issues | `create-gh-issue`, `link-gh-issues` (templates in `.github/ISSUE_TEMPLATE/`; `make gh-labels`, `gh-sub`, `gh-block`, `gh-show`) |
+
+A research project is not a library other projects build on, so the
+template ships no downstream plugin or `llms.txt`; the skills above are for
+work inside the project.
 
 ## Working in the repo
 

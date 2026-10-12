@@ -77,6 +77,10 @@ make gh-show ISSUE=<issue#>
 
 The underlying helper is [.github/scripts/link-issues.sh](.github/scripts/link-issues.sh).
 
+From Claude Code, the `create-gh-issue` and `link-gh-issues` skills
+(`.claude/skills/`) walk through the same steps: picking the template and
+labels, drafting the body, and applying the native links.
+
 ## Docs And Examples
 
 - Documentation source lives in [docs](docs/)
