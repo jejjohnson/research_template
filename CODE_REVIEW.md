@@ -123,7 +123,8 @@ order, unused imports); review what they cannot see.
   with `raise … from …`; guard clauses over deep nesting; Google-style
   docstrings with the formula for a scientific computation (Unicode, e.g.
   `σ² = Σ(xᵢ − μ)² / N`).
-- A new runtime dependency is in `pixi.toml` with `pixi.lock` regenerated;
+- A new runtime dependency is in `pixi.toml` with `pixi.lock` regenerated
+  (and in `pyproject.toml`'s `dependencies` when the package imports it);
   nothing is installed by hand.
 - No credentials, tokens or DVC remote secrets in the diff (they belong in
   `.env` or `.dvc/config.local`, both gitignored).
@@ -152,6 +153,8 @@ with initialize_config_dir(
 ### Settings come from the config
 
 ```python
+from hydra.utils import instantiate
+
 from myproject.models.baseline import BaselineModel
 from myproject.trainers.trainer import Trainer
 
@@ -161,10 +164,8 @@ model = BaselineModel(hidden_size=128, num_layers=4)
 trainer = Trainer(model=model, lr=0.01, epochs=50)
 
 # ✅ Every value from cfg; override with `training.lr=0.01 model=<name>`
-model = BaselineModel(
-    hidden_size=cfg.model.hidden_size,
-    num_layers=cfg.model.num_layers,
-)
+#    (each configs/model/<name>.yaml names its class in `_target_`)
+model = instantiate({k: v for k, v in cfg.model.items() if k != "name"})
 trainer = Trainer(model=model, lr=cfg.training.lr, epochs=cfg.training.epochs)
 ```
 

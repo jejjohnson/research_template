@@ -31,36 +31,44 @@
 # ## Imports
 
 # %%
+import csv
 import json
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 
 # %% [markdown]
-# ## Load Metrics
+# ## Load Results
+#
+# The DVC `train` stage writes the final losses to
+# `results/metrics/train_metrics.json` (scalars, compared by `dvc metrics diff`)
+# and the per-epoch losses to `results/figures/loss_curve.csv` (its plot).
+# Run `pixi run dvc repro` first; from the `notebooks/` directory the paths
+# are one level up.
 
 # %%
-metrics_path = Path("results/metrics/train_metrics.json")
+root = Path.cwd() if Path("results").exists() else Path.cwd().parent
+metrics_path = root / "results" / "metrics" / "train_metrics.json"
+loss_curve_path = root / "results" / "figures" / "loss_curve.csv"
 
-if metrics_path.exists():
-    with open(metrics_path) as f:
-        metrics = json.load(f)
+if metrics_path.exists() and loss_curve_path.exists():
+    metrics = json.loads(metrics_path.read_text())
+    with open(loss_curve_path, newline="") as f:
+        rows = list(csv.DictReader(f))
+    train_loss = [float(row["train_loss"]) for row in rows]
+    val_loss = [float(row["val_loss"]) for row in rows if row["val_loss"]]
     print("Loaded metrics:", metrics)
 else:
-    # Placeholder metrics when no experiment has been run yet
-    metrics = {
-        "train_loss": [1.0, 0.8, 0.6, 0.4, 0.3],
-        "val_loss": [1.1, 0.9, 0.7, 0.5, 0.4],
-    }
-    print("No metrics file found — using placeholder data.")
+    # Placeholder results when no experiment has been run yet
+    train_loss = [1.0, 0.8, 0.6, 0.4, 0.3]
+    val_loss = [1.1, 0.9, 0.7, 0.5, 0.4]
+    metrics = {"train_loss": train_loss[-1], "val_loss": val_loss[-1]}
+    print("No results found — using placeholder data.")
 
 # %% [markdown]
 # ## Training Curves
 
 # %%
-train_loss = metrics.get("train_loss", [])
-val_loss = metrics.get("val_loss", [])
-
 fig, ax = plt.subplots(figsize=(8, 4))
 
 if train_loss:
@@ -79,13 +87,5 @@ plt.show()
 # ## Final Metrics Summary
 
 # %%
-if train_loss:
-    print(f"Final train loss: {train_loss[-1]:.4f}")
-if val_loss:
-    print(f"Final val loss:   {val_loss[-1]:.4f}")
-
-other_metrics = {
-    k: v for k, v in metrics.items() if k not in {"train_loss", "val_loss"}
-}
-for key, value in other_metrics.items():
-    print(f"{key}: {value}")
+for key, value in metrics.items():
+    print(f"{key}: {value:.4f}")

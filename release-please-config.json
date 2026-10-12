@@ -6,7 +6,18 @@
       "bump-minor-pre-major": true,
       "bump-patch-for-minor-pre-major": true,
       "extra-files": [
-        "pyproject.toml"
+        "pyproject.toml",
+        "src/myproject/__init__.py",
+        {
+          "type": "yaml",
+          "path": "CITATION.cff",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "toml",
+          "path": "pixi.toml",
+          "jsonpath": "$.project.version"
+        }
       ]
     }
   }

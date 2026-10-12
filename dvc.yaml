@@ -13,12 +13,11 @@ stages:
     deps:
       - data/processed
       - scripts/train.py
-      - configs/
-      - src/myproject/models
+      - configs/  # includes the model/ and data/ group files
+      - src/myproject
     params:
       - configs/train.yaml:
           - training
-          - model
     metrics:
       - results/metrics/train_metrics.json:
           cache: false

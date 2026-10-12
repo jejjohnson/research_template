@@ -15,9 +15,9 @@ step-by-step.
 - `docs/api/capabilities.md` (`myproject.models.*`): a model that differs
   only in sizes is a new config option for the existing class, not a new
   class.
-- `configs/model/`: the option may exist already. (`transformer.yaml`
-  exists as a config only: no class reads it yet, and it lacks the
-  `hidden_size` key `scripts/train.py` reads.)
+- `configs/model/`: the option may exist already (`baseline.yaml` and
+  `transformer.yaml` configure `BaselineModel` and the placeholder
+  `TransformerModel`).
 - A model from a library (scikit-learn, PyTorch, …) needs a thin wrapper
   only if it must match the project's interface; otherwise configure the
   library class directly.
@@ -42,37 +42,32 @@ Follow `BaselineModel` (`models/baseline.py`):
 ## 3. The config (`configs/model/<name>.yaml`)
 
 ```yaml
+_target_: myproject.models.<module>.<Class>
 name: <name>
 hidden_size: 64
 num_layers: 2
 ```
 
-- Every constructor argument, with the same default as the class, plus
-  `name`. Every key the training script reads from `cfg.model` must be
-  there, or `model=<name>` fails with a missing-key error.
+- `_target_` (the class), `name`, and every constructor argument with the
+  same default as the class: `scripts/train.py` passes every key but
+  `name` to the constructor, so a missing or misspelled key fails
+  `model=<name>`.
 - Choose it with `model=<name>`, or make it the default in the `defaults`
   list of `configs/train.yaml`.
 
 ## 4. Wire it into training
 
-`scripts/train.py` builds `BaselineModel` from `cfg.model.hidden_size` and
-`cfg.model.num_layers`. With a second model, let the config choose the
-class: give each model file a `_target_` and build it with
-`hydra.utils.instantiate`, dropping the `name` key the constructor does not
-take:
+Nothing to change in `scripts/train.py`: its `build_model(cfg.model)`
+instantiates the option's `_target_` with every key but `name`, so a new
+option works as soon as its YAML exists. A model whose constructor needs
+something that is not a config value (the data's input size, say) gets it
+from the script: extend `build_model` to take it and pass it on as a
+keyword of `hydra.utils.instantiate`.
 
-```python
-from hydra.utils import instantiate
-from omegaconf import OmegaConf
-
-model_cfg = OmegaConf.masked_copy(cfg.model, [k for k in cfg.model if k != "name"])
-# configs/model/<name>.yaml holds `_target_: myproject.models.<module>.<Class>`
-model = instantiate(model_cfg)
-```
-
-In `scripts/train_zen.py`, add `builds(NewModel, populate_full_signature=True)`
-and register it with `store(..., name="<name>", group="model")`, so the
-hydra-zen config is generated from the same signature.
+In `scripts/train_zen.py`, add
+`"<name>": builds(NewModel, populate_full_signature=True)` to
+`MODEL_CONFIGS`, so the hydra-zen option is generated from the same
+signature (`pixi run train-zen model=<name>`).
 
 ## 5. Tests (`tests/test_models.py`)
 
@@ -93,8 +88,10 @@ in a trainer test with a few epochs on toy data, well under a second.
 
 ```bash
 uv run pytest tests/test_models.py -v -o addopts=
+pixi run pytest tests/test_configs.py -v -o addopts=   # every model= option builds, in both entry points
 make capabilities && uv run pytest tests/test_capabilities.py -o addopts=
 pixi run train model=<name> training.epochs=2
+pixi run train-zen model=<name> trainer.epochs=2
 ```
 
 Then the `pre-pr-check` skill.

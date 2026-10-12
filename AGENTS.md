@@ -31,12 +31,13 @@ into it.
 |---|---|
 | `src/myproject/data/loading.py` | `load_raw_data(data_dir)`, `load_processed_data(data_dir)` (placeholders: return dicts, raise `FileNotFoundError` for a missing directory) |
 | `src/myproject/models/baseline.py` | `BaselineModel(hidden_size, num_layers)` with `forward(x)` |
+| `src/myproject/models/transformer.py` | `TransformerModel(d_model, nhead, num_layers)` with `forward(x)` (a placeholder) |
 | `src/myproject/trainers/trainer.py` | `Trainer(model, lr, epochs).train(train_data, val_data=None)` → `{"train_loss": [...], "val_loss": [...]}` |
 | `src/myproject/utils/reproducibility.py` | `seed_everything(seed)`: seeds `random`, NumPy and, when installed, PyTorch (deterministic cuDNN) |
-| `scripts/` | Entry points: `preprocess.py`, `train.py` (`@hydra.main` over `configs/train.yaml`), `train_zen.py` (the same run with hydra-zen configs), `evaluate.py`, `convert_notebooks.py` (jupytext → `.ipynb`), `capabilities.py` (the capability index) |
-| `configs/` | Hydra configs: `train.yaml` (defaults `model: baseline`, `data: small`; `training.*`, `logging.*`), `model/{baseline,transformer}.yaml`, `data/{small,full}.yaml` |
-| `dvc.yaml` | The pipeline: `preprocess` (`data/raw` → `data/processed`) → `train` (→ `results/metrics/train_metrics.json`, plot `results/figures/loss_curve.csv`) |
-| `data/{raw,processed,external}/`, `results/{metrics,figures,tables}/` | DVC-managed data and outputs (gitignored except `.gitkeep`) |
+| `scripts/` | Entry points: `preprocess.py`, `train.py` (`@hydra.main` over `configs/train.yaml`), `train_zen.py` (the same models and settings with hydra-zen configs; prints the history, writes no pipeline outputs), `evaluate.py`, `convert_notebooks.py` (jupytext → `.ipynb`), `capabilities.py` (the capability index) |
+| `configs/` | Hydra configs: `train.yaml` (defaults `model: baseline`, `data: small`; `training.*`, `logging.*`), `model/{baseline,transformer}.yaml` (each names its class in `_target_`), `data/{small,full}.yaml` |
+| `dvc.yaml` | The pipeline: `preprocess` (`data/raw` → `data/processed`) → `train` (final losses → metrics `results/metrics/train_metrics.json`; per-epoch losses → plot `results/figures/loss_curve.csv`) |
+| `data/{raw,processed,external}/`, `results/{metrics,figures,tables}/` | DVC-managed data and outputs: gitignored except the `.gitkeep` files, `.dvc` pointers and the `cache: false` metrics JSON; `data/processed/` is the `preprocess` stage's output and is created by it |
 | `notebooks/` | Jupytext percent-format `.py` notebooks (`01_eda.py`, `02_results.py`) |
 | `marimo_notebooks/` | marimo notebooks (`01_exploration.py`) |
 | `docs/`, `myst.yml`, `references.bib` | MyST documentation (notes, tutorials, API pages, capability index) and its bibliography |
@@ -71,8 +72,8 @@ fails on the next run, the next machine or in CI.
 
 | Tool | Used for | The rule it brings |
 |---|---|---|
-| **pixi** (`pixi.toml`, `pixi.lock`) | The runtime and CI environment: Python, NumPy, SciPy, xarray, netCDF4, matplotlib, DVC, hydra-core, hydra-zen, OmegaConf (conda-forge first, PyPI second); extra environments `docs`, `jupyterlab`, `marimo` | CI's test, lint, type-check, DVC and docs workflows run through `pixi run`. A runtime dependency goes into `pixi.toml` and the lock is regenerated (`pixi lock`, commit `pixi.lock`). Never `pip install` / `conda install` into an environment by hand. |
-| **uv** (`pyproject.toml`, `Makefile`) | The local developer loop: pytest, ruff, ty, pre-commit, the MyST CLI | `pyproject.toml` declares no runtime dependencies, so the uv environment holds the tooling (the `docs` group happens to bring NumPy through matplotlib) but not Hydra or DVC: run tests, lint, types and docs with `make` / `uv run`, experiments with `pixi run`. Always `uv run`, never the system Python. |
+| **pixi** (`pixi.toml`, `pixi.lock`) | The runtime and CI environment: Python, NumPy, SciPy, xarray, netCDF4, matplotlib, DVC, hydra-core, hydra-zen, OmegaConf (conda-forge first, PyPI second); extra environments `docs`, `jupyterlab`, `marimo` | CI's test, lint, type-check, DVC and docs workflows run through `pixi run`. A runtime dependency goes into `pixi.toml` and the lock is regenerated (`pixi lock`, commit `pixi.lock`); one the package imports also goes into `dependencies` in `pyproject.toml`, so the package installs on its own. Never `pip install` / `conda install` into an environment by hand. |
+| **uv** (`pyproject.toml`, `Makefile`) | The local developer loop: pytest, ruff, ty, pre-commit, the MyST CLI | `pyproject.toml` declares only the package's own runtime dependencies (NumPy), so the uv environment holds the package and the tooling but not Hydra or DVC: run tests, lint, types and docs with `make` / `uv run`, experiments with `pixi run`. `uv.lock` is gitignored: `pixi.lock` is the lockfile of record. Always `uv run`, never the system Python. |
 | **Hydra** + **OmegaConf** (`configs/`, `scripts/train.py`) | Every setting of a run, composed from config groups and overridden on the command line | No hard-coded hyperparameter, seed, split or path in a script; read it from `cfg`. Outputs the pipeline tracks go to fixed project-root paths (`get_original_cwd()`), not into Hydra's run directory. |
 | **hydra-zen** (`scripts/train_zen.py`) | Configs generated from Python signatures (`builds`, `make_config`, `ZenStore`) | The structured config is built from the class it configures (`builds(TheClass, populate_full_signature=True)`), so the two cannot drift apart. |
 | **DVC** (`dvc.yaml`, `.dvc/`, `.dvcignore`) | Data versioning and the pipeline from raw data to metrics | Every stage declares everything it reads (`deps`, `params`) and everything it writes (`outs`, `metrics`, `plots`); commit `dvc.lock` and `.dvc` pointer files, never the data. |
@@ -141,8 +142,10 @@ The step-by-step for each is a skill (see "Recipes").
 - A script reads every value from `cfg`; a new hyperparameter is a new key,
   with its default in the YAML, never a literal in Python.
 - A config group option must provide every key the script reads from that
-  group (in the example, `train.py` reads `cfg.model.hidden_size` and
-  `cfg.model.num_layers` whichever `model=` is chosen).
+  group (in the example, `train.py` builds `cfg.model` with
+  `hydra.utils.instantiate`, so every `configs/model/*.yaml` names its class
+  in `_target_` and lists that class's constructor arguments;
+  `tests/test_configs.py` builds every option).
 - Sweeps are Hydra multirun (`-m training.lr=0.001,0.01`); a sweep whose
   jobs write to the same fixed output path overwrites itself, so give each
   job its own output or use DVC experiments.
@@ -156,19 +159,23 @@ The step-by-step for each is a skill (see "Recipes").
   keys it uses (keys that exist in the params file — a Hydra defaults group
   such as `model` is not a key of `configs/train.yaml`; depend on the group
   file instead); as `outs` what it writes. An output path must not contain
-  files git tracks: DVC refuses to reproduce such a stage (in the example,
-  `data/processed/.gitkeep` is tracked and `data/processed` is an output).
-- Metrics are JSON under `results/metrics/` declared with `cache: false`;
-  plots (CSV or JSON) under `results/figures/`; the script writes exactly
-  the paths the stage declares.
+  files git tracks: DVC refuses to reproduce such a stage (no `.gitkeep`
+  inside an output directory; the stage's script creates the directory).
+- Metrics are flat JSON dicts of scalars (final or summary values) under
+  `results/metrics/`, declared with `cache: false`; per-epoch or per-step
+  values are plots (CSV or JSON) under `results/figures/`; the script writes
+  exactly the paths the stage declares, and notebooks read those shapes.
 - Raw data enters with `dvc add` (commit the `.dvc` pointer) and leaves
-  with `dvc push`; `dvc.lock` is committed after `dvc repro`.
+  with `dvc push`; `dvc.lock` is committed after `dvc repro`. The template
+  itself ships no `dvc.lock` (it has no data and no remote, so the lock
+  would pin placeholder outputs nobody can pull); commit one after your
+  first `dvc repro`.
 - What DVC expects in git must not be gitignored: the `.dvc` pointers and
   the `cache: false` metrics files (without them in `HEAD`,
   `dvc metrics diff` has nothing to compare). `git check-ignore -v <path>`
-  shows the rule that hides a file; the template's `data/raw/*` and
-  `results/metrics/*` rules need `!data/raw/*.dvc` /
-  `!results/metrics/*.json` exceptions once you use them.
+  shows the rule that hides a file; keep the template's
+  `!data/raw/*.dvc` and `!results/metrics/*.json` exceptions when you
+  change `.gitignore`.
 
 ### 4. Results: regenerable from a commit
 
@@ -205,7 +212,8 @@ The step-by-step for each is a skill (see "Recipes").
 | Check | Enforces |
 |---|---|
 | `tests/test_data.py` | The loaders return the documented keys |
-| `tests/test_models.py` | `BaselineModel` defaults, custom parameters, `repr`, `forward` |
+| `tests/test_models.py` | `BaselineModel` and `TransformerModel` defaults, custom parameters, `repr`, `forward` |
+| `tests/test_configs.py` | Every `model=` option composes and builds as `train.py` builds it; `train_zen.py` offers the same options and defaults; `train.py` writes scalar metrics and a per-epoch plots CSV (skips without Hydra, i.e. outside pixi) |
 | `tests/test_capabilities.py` | `docs/api/capabilities.md` is current; no name bound to two objects |
 | ruff (`make lint`), ty (`make typecheck`) | Lint (`E F I UP B SIM RUF`) and types on `src/` |
 | `.pre-commit-config.yaml` (`make precommit`) | ruff, ruff-format, whitespace, YAML / JSON syntax, files over 5 MB |
@@ -216,9 +224,9 @@ The step-by-step for each is a skill (see "Recipes").
 | `citation.yml` | `CITATION.cff` validates |
 | `conventional-commits.yml` | PR titles are Conventional Commits with a lowercase subject |
 
-Nothing tests `Trainer`, `seed_everything` or the scripts yet, and nothing
-checks that a config group provides the keys a script reads: review those
-by hand.
+Nothing tests `Trainer`, `seed_everything`, `preprocess.py` or
+`evaluate.py` yet, and `tests/test_configs.py` covers the `model` group
+only: review the rest by hand.
 
 ## Recipes
 
@@ -267,7 +275,7 @@ make help                 # every target
 ```bash
 pixi install                          # the default environment (-e <env> for another)
 pixi run test                         # pytest -v with coverage (what CI runs)
-pixi run lint                         # ruff check src/   (what CI runs)
+pixi run lint                         # ruff check .      (what CI runs)
 pixi run typecheck                    # ty check src/     (what CI runs)
 pixi run preprocess                   # also: train, train-zen, evaluate
 pixi run train training.lr=0.01 model=baseline   # Hydra overrides
@@ -284,12 +292,9 @@ pixi run -e jupyterlab lab
 pixi run -e marimo marimo-edit
 ```
 
-The pixi `lint` and `format` tasks cover `src/` only; lint and format the
-whole repo with the `make` targets (or `uv run --group lint ruff check .`).
-Hydra 1.3 does not run on Python 3.14 (`ValueError: badly formed help
-string` from argparse): if `pixi run train` fails that way, the pixi
-environment resolved Python 3.14; pin `python` below 3.14 in `pixi.toml`
-and re-lock.
+`pixi.toml` pins `python` below 3.14: Hydra 1.3 does not run on Python
+3.14 (`ValueError: badly formed help string` from argparse). Lift the pin
+(and re-lock) only once the Hydra release in `pixi.lock` supports it.
 
 Run one test with `uv run pytest tests/test_models.py::test_baseline_model_init -v -o addopts=`.
 

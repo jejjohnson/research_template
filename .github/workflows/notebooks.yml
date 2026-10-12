@@ -20,20 +20,16 @@ jobs:
           cache: true
       - name: Validate Jupytext notebooks are parseable
         run: |
-          for nb in $(find notebooks -name "*.py"); do
-            echo "Validating $nb..."
-            python -c "
-import ast, sys
-with open('$nb') as f:
-    src = f.read()
-try:
-    ast.parse(src)
-    print('  OK')
-except SyntaxError as e:
-    print(f'  FAILED: {e}', file=sys.stderr)
-    sys.exit(1)
-"
-          done
+          pixi run python - $(find notebooks -name "*.py") <<'EOF'
+          import ast
+          import sys
+
+          for path in sys.argv[1:]:
+              print(f"Validating {path}...")
+              with open(path) as f:
+                  ast.parse(f.read(), filename=path)
+          print("All notebooks parse.")
+          EOF
       - name: Warn if any .ipynb files are committed
         run: |
           ipynb_files=$(find notebooks -name "*.ipynb" 2>/dev/null || true)
