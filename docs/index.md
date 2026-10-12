@@ -15,6 +15,8 @@ configuration management, and documentation.
 - **Hydra** + **hydra-zen** for configuration management
 - **MyST** for scientific documentation
 - **JupyterLab** and **Marimo** notebook environments
+- **Agent-ready**: `AGENTS.md` and `CODE_REVIEW.md` for coding agents, and a
+  [capability index](api/capabilities.md) of the package
 
 ## Getting Started
 

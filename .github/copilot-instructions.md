@@ -1,79 +1,34 @@
 # Copilot Instructions
 
-This is a scientific research project template. Follow these conventions:
+Read [`AGENTS.md`](../AGENTS.md) at the repository root first: it is the
+single source of truth for every coding agent working here (the project
+layout, the tools and their rules, "reuse before you write", the contracts
+for the package, configs, the DVC pipeline, results, notebooks and docs,
+what enforces them, commands, the pre-commit checklist, git and PR rules).
 
-## Environment
+The essentials, in case you only read this file:
 
-- Use `pixi run <task>` for all commands (never `pip install` or `conda install` directly)
-- Python >= 3.12, type annotations required
-- Use `from __future__ import annotations` for forward references
-
-## Code Style
-
-- Ruff linting + formatting (line-length 88)
-- Select: E, F, I, UP, B, SIM, RUF
-
-## Project Conventions
-
-- Data files managed by DVC (never commit raw data to git)
-- Configs managed by Hydra in `configs/` directory
-- Results saved to `results/` (DVC-managed)
-- Notebooks stored as Jupytext percent-format `.py` files in `notebooks/` (no `.ipynb` committed)
-
-## Testing
-
-```bash
-pixi run test        # Run tests
-pixi run lint        # Lint
-pixi run typecheck   # Type check
-```
-
-## Key Directories
-
-| Path | Purpose |
-|------|---------|
-| `src/myproject/` | Main package source code |
-| `tests/` | Test suite |
-| `docs/` | Documentation (MyST) |
-| `notebooks/` | Jupytext percent-format .py notebooks |
-| `marimo_notebooks/` | Marimo reactive notebooks |
-| `configs/` | Hydra configuration hierarchy |
-| `scripts/` | Entry point scripts |
-| `data/` | Data directories (DVC-managed) |
-| `results/` | Experiment results (DVC-managed) |
-
-## Behavioral Guidelines
-
-### Do Not Nitpick
-- Ignore style issues that linters/formatters catch (formatting, import order, quote style)
-- Don't suggest changes to code you weren't asked to modify
-- Match existing patterns even if you'd do it differently
-
-### Always Propose Tests
-When implementing features or fixing bugs:
-1. Write a test that verifies the expected behavior
-2. Implement the change
-3. Verify the test passes
-
-### Never Suggest Without a Proposal
-Bad: "You should add validation here"
-Good: "Add validation here. Proposed implementation:"
-```python
-if value < 0:
-    raise ValueError('Value must be non-negative')
-```
-
-### Simplicity First
-- No abstractions for single-use code
-- No speculative features beyond what was asked
-- If 200 lines could be 50, propose the simpler version
-
-### Surgical Changes
-- Only modify lines directly related to the request
-- Don't refactor adjacent code
-- Don't add docstrings/comments to code you didn't change
-- Remove only imports/functions that YOUR changes made unused
-
-## Code Review
-
-For all code review tasks, follow the guidance in `/CODE_REVIEW.md`.
+- This is a research project template. Passages marked
+  `<!-- template-example: … -->` in the agent files describe the bundled example
+  package (`src/myproject/`) and are rewritten after adoption.
+- Reusable code lives in the package; `scripts/` are thin Hydra entry
+  points; notebooks import from the package. Search
+  [`docs/api/capabilities.md`](../docs/api/capabilities.md) before writing a
+  loader, model, training step or helper.
+- Every setting lives in `configs/` (Hydra; hydra-zen in
+  `scripts/train_zen.py`), never as a literal in a script.
+- Data and results are DVC-managed, never committed to git; every
+  `dvc.yaml` stage declares its `deps`, `params`, `outs` and `metrics`;
+  commit `dvc.lock`.
+- Notebooks are jupytext percent-format `.py` files in `notebooks/` and
+  marimo apps in `marimo_notebooks/`; no `.ipynb` is committed.
+- Two environments: `make` / `uv run` for tests, lint, types and docs;
+  `pixi run` for experiments and DVC (CI runs everything through pixi).
+  Never `pip install` or `conda install` by hand.
+- Propose a test with every feature or fix (write it first, then make it
+  pass), and a concrete change with every review suggestion.
+- Before committing, from the repo root: `make test`,
+  `uv run --group lint ruff check .`, `uv run --group lint ruff format --check .`,
+  `make typecheck`; `make capabilities` after a public API change.
+- Path-scoped standards live in `.github/instructions/`; code review follows
+  [`CODE_REVIEW.md`](../CODE_REVIEW.md).

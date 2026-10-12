@@ -1,6 +1,15 @@
 # Code Review Agent Instructions
 
-Standing instructions for **all** agents performing code reviews on this repository.
+Standing instructions for **all** agents performing code reviews on this
+repository. This is a research project: most defects worth finding are about
+**reproducibility** (a hard-coded hyperparameter that bypasses the configs, an
+unseeded draw, a DVC stage that does not declare what it reads, a metric
+written somewhere the pipeline does not look, statistics leaking from the
+test split into training) or about **where code lives** (a loader or a
+training loop re-implemented in a script or a notebook instead of reused from
+the package), not style. Read "Boundaries", "Reuse before you write" and
+"The contracts" in [`AGENTS.md`](AGENTS.md) first; this file is the
+checklist and the report format.
 
 ---
 
@@ -9,7 +18,7 @@ Standing instructions for **all** agents performing code reviews on this reposit
 Use the following command to get the diff for review:
 
 ```bash
-BASE_BRANCH="$(git rev-parse --verify master >/dev/null 2>&1 && echo master || echo main)"
+BASE_BRANCH="$(git rev-parse --verify main >/dev/null 2>&1 && echo main || echo master)"
 git --no-pager diff --no-prefix --unified=100000 --minimal $(git merge-base --fork-point "$BASE_BRANCH")...HEAD
 ```
 
@@ -32,212 +41,180 @@ git --no-pager diff --no-prefix --unified=100000 --minimal "$BASE_BRANCH"...HEAD
 
 ## Review Checklist
 
-### 1. Code Style and Readability
+Skip anything ruff, ty or the tests already enforce (formatting, import
+order, unused imports); review what they cannot see.
 
-- Clear, descriptive naming (variables, functions, classes, modules)
-- Appropriate function/method length (single responsibility)
-- Logical code organization and flow
-- Avoidance of deeply nested structures
-- Linting via **ruff** (`pixi run lint`)
-- Type-hint checking via **ty** (`pixi run typecheck`)
+### 1. Reuse and where code lives
 
-> **Rule of thumb**: Sacrifice *cleverness* for *clarity*. Sacrifice *brevity* for *explicitness*.
-> Don't worry about formatting — our CI pipeline (ruff format, pre-commit) handles that automatically.
+- Every function, class or module the diff **adds** has been checked against
+  [`docs/api/capabilities.md`](docs/api/capabilities.md). A loader, model,
+  training loop, seeding helper or metric re-implemented in a script or a
+  notebook is a **High** finding, with the existing name to use.
+- Reusable logic is in the package (`src/<package>/`), with a test; scripts
+  only read the config, call the package and write outputs; notebooks
+  import from the package.
+- The package does not import Hydra, DVC, a script or a notebook, and does
+  not read a `DictConfig`; it takes plain arguments.
+- A new public name is in the regenerated capability index
+  (`make capabilities`).
 
-### 2. Modern Python Idioms (Python ≥ 3.12)
+### 2. Configs
 
-- `from __future__ import annotations` at the top of every module
-- Type hints on **all** public functions, methods, and module-level variables
-- `pathlib.Path` over `os.path`
-- f-strings for string formatting
-- Walrus operator (`:=`) only when it genuinely improves readability
-- `match` statements for pattern matching where appropriate
-- Structural pattern matching for complex conditionals
-- Context managers (`with` statements) for resource handling
-- `dataclasses` or `attrs` for data containers
-- `Enum` for fixed sets of constants
-- Modern union syntax (`X | Y` instead of `Union[X, Y]`)
-- Modern optional syntax (`X | None` instead of `Optional[X]`)
-- Built-in generics (`list[int]`, `dict[str, Any]` instead of `List[int]`, `Dict[str, Any]`)
+- No hyperparameter, seed, split fraction, path or model choice written as
+  a literal in a script or notebook: it is a key in `configs/`, read from
+  `cfg`, with its default in the YAML.
+- A new config group option provides every key the scripts read from that
+  group; a renamed key is renamed everywhere it is read (scripts,
+  `dvc.yaml` `params`, notebooks, docs).
+- The hydra-zen entry point and the YAML configs still configure the same
+  objects with the same defaults.
+- Sweeps (`-m`) do not write every job's result to the same path.
 
-### 3. Packaging and Project Structure
+### 3. The DVC pipeline
 
-- Proper `pyproject.toml` configuration (PEP 621)
-- Appropriate use of `__init__.py` exports
-- Clear module boundaries and dependencies
-- Correct use of relative vs absolute imports
-- Entry points defined properly for CLI tools
-- `src/` layout enforced
+- Every stage lists as `deps` its script, the package modules it imports
+  and the data it reads; as `params` the config keys it uses (keys that
+  exist in the params file); as `outs` / `metrics` / `plots` exactly what
+  the script writes.
+- No output path contains a file git tracks; no data or result file is
+  committed to git; `.dvc` pointers and `dvc.lock` are committed with the
+  change that produced them.
+- A new script that produces results is a stage, not a manual step.
 
-### 4. Documentation
+### 4. Reproducibility and data hygiene
 
-- Module-level docstrings explaining purpose
-- Function/method docstrings for **all** public APIs (Google style — be consistent)
-- Inline comments explaining *why*, not *what* — except for complex logic or function calls where a brief *what* comment aids comprehension
-- Complex algorithms should have step-by-step explanations
-- All scientific algorithms should include Unicode equations in docstrings and inline where appropriate (e.g. `# σ² = Σ(xᵢ − μ)² / N`)
-- All docstrings for public classes and functions should include 2–3 example use cases
-- Type hints serve as documentation — ensure they are accurate and complete
+- One seed per run, from the config (`seed_everything`, or an explicit
+  `np.random.default_rng(seed)` passed down); no unseeded draws, no
+  global-state RNG calls inside the package.
+- Splits are made once, before any fitting, from config fractions and the
+  seed; normalisation statistics, vocabularies, imputers and feature
+  selection are fitted on the training split only; nothing tuned on the
+  test split.
+- Order-dependent operations are deterministic (sorted file listings,
+  stable sorts, `set` iteration not relied on); non-deterministic GPU
+  kernels are called out.
+- Metrics are written as JSON to the path `dvc.yaml` declares, with keys
+  that `dvc metrics diff` and the results notebook read.
+- Paths are `pathlib.Path`, built from the project root (or an argument),
+  never from the current working directory Hydra may change.
 
-### 5. Error Handling
+### 5. Notebooks, docs and citation
 
-- Specific exception types (never bare `except:`)
-- Custom exceptions for domain-specific errors
-- Helpful error messages with context
-- Proper exception chaining (`raise ... from ...`)
-- Early returns / guard clauses to reduce nesting
+- Notebooks are jupytext percent-format `.py` (in `notebooks/`) or marimo
+  apps (in `marimo_notebooks/`); no `.ipynb` is added; a figure used by the
+  docs is saved under `docs/images/<notebook_name>/` and committed with it.
+- A number or figure quoted in the docs comes from a pipeline output or a
+  notebook that reads one.
+- A new page is in the `myst.yml` toc; references are BibTeX entries in
+  `references.bib` cited with `[@key]`; `CITATION.cff` is updated when the
+  authors, title or version change.
 
-### 6. Testing Considerations
+### 6. Tests
 
-- Functions should be easily testable (pure functions where possible)
-- Dependencies should be injectable
-- Side effects should be isolated and explicit
-- Consider edge cases and boundary conditions
+- New package code has tests in `tests/` against a hand computation, a
+  closed form or a small fixture (`tmp_path` for files); no network, no
+  real data, well under a second each.
+- Incidental randomness is seeded; a test on a random quantity bounds it by
+  its sampling distribution, with the bound's source in a comment.
 
-### 7. Performance (when relevant)
+### 7. Python, dependencies and security
 
-- Appropriate data structures for the use case
-- Generator expressions for large sequences
-- Avoid premature optimization
-- Note O(n) implications for critical paths
-
-### 8. Security
-
-- No hardcoded secrets or credentials
-- Input validation and sanitization
-- Safe handling of file paths (no path traversal vulnerabilities)
-- Appropriate use of `subprocess` (avoid `shell=True`)
-
----
-
-## Package Preferences
-
-When reviewing dependency choices or suggesting alternatives, prefer these libraries:
-
-| Purpose | Preferred Package |
-|---------|-------------------|
-| Logging | `loguru` |
-| CLI | `cyclopts` |
-| Data containers | `dataclasses` (stdlib) or `attrs` |
-| Configuration | `hydra-core` / `omegaconf` |
-| Path handling | `pathlib` (stdlib) |
-| HTTP | `httpx` |
-| Testing | `pytest` |
+- Type hints on every public function; `X | None`; specific exceptions
+  with `raise … from …`; guard clauses over deep nesting; Google-style
+  docstrings with the formula for a scientific computation (Unicode, e.g.
+  `σ² = Σ(xᵢ − μ)² / N`).
+- A new runtime dependency is in `pixi.toml` with `pixi.lock` regenerated;
+  nothing is installed by hand.
+- No credentials, tokens or DVC remote secrets in the diff (they belong in
+  `.env` or `.dvc/config.local`, both gitignored).
 
 ---
 
-## Python-Specific Checks
+## Research-Specific Checks
 
-When reviewing, specifically verify the patterns below.
+<!-- template-example: the examples use the example package (myproject); keep the patterns, rename the imports. -->
 
-### Type Hints
-
-```python
-# ❌ Missing type hints
-def process_data(items, threshold):
-    ...
-
-# ✅ Complete type hints
-def process_data(items: list[DataItem], threshold: float) -> ProcessedResult:
-    ...
-```
-
-### Modern Syntax
+The snippets below run as written from the repo root in the pixi
+environment, with `cfg` composed from `configs/`:
 
 ```python
-# ❌ Old-style
-from typing import Optional, Union, List, Dict
-
-def fetch(id: Optional[int] = None) -> Union[Data, None]:
-    result: Dict[str, List[int]] = {}
-
-# ✅ Modern (Python 3.12+)
-from __future__ import annotations
-
-def fetch(id: int | None = None) -> Data | None:
-    result: dict[str, list[int]] = {}
-```
-
-### Dataclasses for Data Containers
-
-```python
-# ❌ Plain class with boilerplate
-class Config:
-    def __init__(self, host: str, port: int, timeout: float = 30.0):
-        self.host = host
-        self.port = port
-        self.timeout = timeout
-
-# ✅ Dataclass
-from __future__ import annotations
-
-from dataclasses import dataclass
-
-@dataclass
-class Config:
-    host: str
-    port: int
-    timeout: float = 30.0
-```
-
-### Path Handling
-
-```python
-# ❌ os.path
-import os
-path = os.path.join(base_dir, "data", filename)
-if os.path.exists(path):
-    with open(path) as f:
-        ...
-
-# ✅ pathlib
 from pathlib import Path
-path = base_dir / "data" / filename
-if path.exists():
-    content = path.read_text()
+
+from hydra import compose, initialize_config_dir
+
+
+with initialize_config_dir(
+    version_base=None, config_dir=str(Path("configs").resolve())
+):
+    cfg = compose(config_name="train", overrides=["training.epochs=3"])
 ```
 
-### Exception Handling
+### Settings come from the config
 
 ```python
-# ❌ Bare except, poor chaining
-try:
-    result = parse(data)
-except:
-    raise RuntimeError("Failed")
+from myproject.models.baseline import BaselineModel
+from myproject.trainers.trainer import Trainer
 
-# ✅ Specific exceptions, proper chaining
-try:
-    result = parse(data)
-except json.JSONDecodeError as e:
-    raise ParseError(f"Invalid JSON in {source}") from e
+# ❌ Literals: a run cannot be reproduced or swept from the command line,
+#    and DVC's params tracking never sees them
+model = BaselineModel(hidden_size=128, num_layers=4)
+trainer = Trainer(model=model, lr=0.01, epochs=50)
+
+# ✅ Every value from cfg; override with `training.lr=0.01 model=<name>`
+model = BaselineModel(
+    hidden_size=cfg.model.hidden_size,
+    num_layers=cfg.model.num_layers,
+)
+trainer = Trainer(model=model, lr=cfg.training.lr, epochs=cfg.training.epochs)
 ```
 
-### Explanatory Comments for Complex Logic
+### One seed, from the config
 
 ```python
-# ❌ No explanation for non-obvious algorithm
-def calculate_score(items):
-    return sum(i.weight * (1 - i.age / 365) for i in items if i.active)
+import numpy as np
 
-# ✅ Clear explanation of the logic
-def calculate_score(items: list[Item]) -> float:
-    """Calculate weighted score with time decay.
+x = np.arange(10.0)
 
-    Score computation:
-        1. Filter to only active items
-        2. Apply time decay: items lose relevance linearly over one year
-        3. Weight each item's contribution by its assigned weight
-        4. Sum all weighted, decayed values
-    """
-    total = 0.0
-    for item in items:
-        if not item.active:
-            continue
-        # Time decay factor: 1.0 for new items → 0.0 after 365 days
-        decay_factor = 1 - (item.age / 365)
-        total += item.weight * decay_factor
-    return total
+# ❌ A different split on every run
+idx = np.random.permutation(len(x))
+
+# ✅ The same split for the same config
+rng = np.random.default_rng(cfg.training.seed)
+idx = rng.permutation(len(x))
+```
+
+### No leakage from the test split
+
+```python
+n_train = int(cfg.data.train_split * len(x))
+
+# ❌ The mean and standard deviation include the test samples
+x_std = (x - x.mean()) / x.std()
+train, test = x_std[idx[:n_train]], x_std[idx[n_train:]]
+
+# ✅ Split first; fit the statistics on the training split only
+train, test = x[idx[:n_train]], x[idx[n_train:]]
+mu, sigma = train.mean(), train.std()
+train, test = (train - mu) / sigma, (test - mu) / sigma
+```
+
+### A stage declares what it reads and writes
+
+```yaml
+# ❌ DVC cannot tell when evaluate is stale, and does not track its output
+evaluate:
+  cmd: python scripts/evaluate.py
+
+# ✅
+evaluate:
+  cmd: python scripts/evaluate.py
+  deps:
+    - scripts/evaluate.py
+    - data/processed
+    - results/metrics/train_metrics.json
+  metrics:
+    - results/metrics/eval_metrics.json:
+        cache: false
 ```
 
 ---
@@ -316,3 +293,5 @@ Prefix each suggestion title with a type indicator:
 - Offer **concrete alternatives**, not just criticism
 - Recognize that context matters — ask clarifying questions when needed
 - Keep feedback **actionable**: every suggestion should have a clear next step
+- Don't nitpick what linters and formatters catch, or code the change did
+  not touch
