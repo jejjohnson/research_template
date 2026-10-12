@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from myproject.models.baseline import BaselineModel
+from myproject.models.transformer import TransformerModel
 
 
 def test_baseline_model_init() -> None:
@@ -34,3 +35,16 @@ def test_baseline_model_forward() -> None:
     x = [1, 2, 3]
     result = model.forward(x)
     assert result == x
+
+
+def test_transformer_model_init() -> None:
+    """Test TransformerModel defaults match configs/model/transformer.yaml."""
+    model = TransformerModel()
+    assert (model.d_model, model.nhead, model.num_layers) == (256, 8, 6)
+
+
+def test_transformer_model_repr_and_forward() -> None:
+    """Test TransformerModel representation and placeholder forward pass."""
+    model = TransformerModel(d_model=32, nhead=4, num_layers=1)
+    assert repr(model) == "TransformerModel(d_model=32, nhead=4, num_layers=1)"
+    assert model.forward([1, 2, 3]) == [1, 2, 3]
