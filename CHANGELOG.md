@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.2](https://github.com/jejjohnson/research_template/compare/my-research-project-v0.1.1...my-research-project-v0.1.2) (2026-10-12)
+
+
+### Bug Fixes
+
+* make the example pipeline, entry points and docs run as documented ([#9](https://github.com/jejjohnson/research_template/issues/9)) ([eb4998f](https://github.com/jejjohnson/research_template/commit/eb4998fa01f9b728d832b083f6e6fb43cef342ba))
+
+
+### Documentation
+
+* **agents:** add skills and read-only reviewer subagents ([#8](https://github.com/jejjohnson/research_template/issues/8)) ([bae39e0](https://github.com/jejjohnson/research_template/commit/bae39e09964f6c898fbdbdfb895fa21c7dfbe7b4))
+* **agents:** make AGENTS.md the single source of truth and add a capability index ([#7](https://github.com/jejjohnson/research_template/issues/7)) ([060d0e5](https://github.com/jejjohnson/research_template/commit/060d0e534bb34d4bce28fb23398c4912ea7d49c3))
+
 ## [0.1.1](https://github.com/jejjohnson/research_template/compare/my-research-project-v0.1.0...my-research-project-v0.1.1) (2026-04-21)
 
 
