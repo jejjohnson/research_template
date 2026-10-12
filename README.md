@@ -21,7 +21,7 @@
 - 📚 **[MyST-MD](https://mystmd.org)** for publication-quality documentation
 - 🔍 **[Ruff](https://docs.astral.sh/ruff/)** for fast linting and formatting
 - 🔒 **Pre-commit hooks** for code quality enforcement
-- 🚀 **14 GitHub Actions workflows** for CI/CD, reproducibility, and automation
+- 🚀 **15 GitHub Actions workflows** for CI/CD, reproducibility, and automation
 - 🖥️ **Cross-platform** support (Linux x86-64, macOS ARM64)
 - 📝 **[CITATION.cff](https://citation-file-format.github.io/)** for academic citations
 - 🔬 **Hydra multirun** sweeps for hyperparameter optimization
@@ -31,7 +31,7 @@
 
 ```
 research_template/
-├── .github/workflows/    # 14 GitHub Actions workflows
+├── .github/workflows/    # 15 GitHub Actions workflows
 ├── .devcontainer/        # VS Code / Codespaces dev container
 ├── configs/              # Hydra configuration hierarchy
 │   ├── train.yaml        # Main config with defaults
@@ -162,7 +162,7 @@ dvc metrics diff
 
 The DVC pipeline is defined in `dvc.yaml`:
 1. **preprocess**: Processes raw data → `data/processed/`
-2. **train**: Trains model → `results/metrics/train_metrics.json`
+2. **train**: Trains model → final losses in `results/metrics/train_metrics.json` (metrics), per-epoch losses in `results/figures/loss_curve.csv` (plot)
 
 ## Documentation
 
@@ -234,6 +234,7 @@ making them diff-friendly and importable as regular Python modules.
 | `conventional-commits.yml` | PR | Validate PR title |
 | `label-pr.yml` | PR | Auto-label PRs |
 | `pre-commit-autoupdate.yml` | weekly schedule | Update pre-commit hooks |
+| `release-please.yml` | push to main | Open release PRs, tag releases, update `CHANGELOG.md` and versions |
 
 ## Academic
 
