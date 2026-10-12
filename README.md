@@ -25,7 +25,7 @@
 - 🖥️ **Cross-platform** support (Linux x86-64, macOS ARM64)
 - 📝 **[CITATION.cff](https://citation-file-format.github.io/)** for academic citations
 - 🔬 **Hydra multirun** sweeps for hyperparameter optimization
-- 🤖 **Agent-ready**: [`AGENTS.md`](AGENTS.md) holds the rules every coding agent follows (with the example-specific passages marked for rewriting), [`CODE_REVIEW.md`](CODE_REVIEW.md) the review checklist, and [`docs/api/capabilities.md`](docs/api/capabilities.md) indexes every public name in the package (`make capabilities`)
+- 🤖 **Agent-ready**: [`AGENTS.md`](AGENTS.md) holds the rules every coding agent follows (with the example-specific passages marked for rewriting), [`CODE_REVIEW.md`](CODE_REVIEW.md) the review checklist, [`docs/api/capabilities.md`](docs/api/capabilities.md) indexes every public name in the package (`make capabilities`), and `.claude/` holds step-by-step skills (adopt the template, add an experiment / dataset / model / notebook, reproduce and write up results) and two read-only reviewers
 
 ## Project Structure
 
