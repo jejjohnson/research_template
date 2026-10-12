@@ -76,6 +76,7 @@ wandb/
 # PyTest
 .pytest_cache/
 .coverage
+coverage.xml
 htmlcov/
 
 # Ruff
@@ -99,6 +100,12 @@ htmlcov/
 
 # Pixi
 .pixi/
+
+# MyST build output (make docs)
+_build/
+
+# Plans and scratch notes (see AGENTS.md)
+.plans/
 
 # Misc
 *.log

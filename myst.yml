@@ -18,6 +18,7 @@ project:
     - title: API Reference
       children:
         - file: docs/api/reference
+        - file: docs/api/capabilities
 site:
   template: book-theme
   title: My Research Project

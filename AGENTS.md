@@ -1,242 +1,404 @@
-# Agent Guidelines
+# AGENTS.md
 
-This document provides instructions for AI coding agents working on this
-research project.
+Standing instructions for **every** coding agent working in this repository
+(Claude Code, Copilot, Codex, Gemini, …). This is the single source of truth:
+`CLAUDE.md` and `.github/copilot-instructions.md` point here.
 
-## Environment Setup
+> **Template note.** This repository is a GitHub template for research
+> projects. Passages that describe the bundled example (the `myproject`
+> package, its configs, its DVC stages, its notebooks) start with an HTML
+> comment `<!-- template-example: … -->`; after adopting the template, rewrite each
+> of them from your own code. List them with
+> `grep -rnE '(<!--|#) template-example:' --exclude-dir=.git --exclude-dir=.venv --exclude-dir=.pixi .`.
+> Everything without the marker is a rule for every project made from the
+> template.
 
-This project uses [Pixi](https://pixi.sh) for environment management.
-All commands should be run using `pixi run <task>`.
+## What this repo is
+
+<!-- template-example: describes the example project; rewrite from your code. -->
+
+A reproducible research project: an installable Python package holds the
+reusable code, thin scripts run it, Hydra configs hold every setting, a DVC
+pipeline ties data, code, configs and results together, notebooks explore
+and report, and MyST docs write it up. Experiments, notebooks and the docs
+are built on the package, so **the package is the project's library of
+primitives**: a loader, a model or a training step written once there is
+reused everywhere, and anything a script or a notebook needs twice moves
+into it.
+
+| Path | Owns |
+|---|---|
+| `src/myproject/data/loading.py` | `load_raw_data(data_dir)`, `load_processed_data(data_dir)` (placeholders: return dicts, raise `FileNotFoundError` for a missing directory) |
+| `src/myproject/models/baseline.py` | `BaselineModel(hidden_size, num_layers)` with `forward(x)` |
+| `src/myproject/trainers/trainer.py` | `Trainer(model, lr, epochs).train(train_data, val_data=None)` → `{"train_loss": [...], "val_loss": [...]}` |
+| `src/myproject/utils/reproducibility.py` | `seed_everything(seed)`: seeds `random`, NumPy and, when installed, PyTorch (deterministic cuDNN) |
+| `scripts/` | Entry points: `preprocess.py`, `train.py` (`@hydra.main` over `configs/train.yaml`), `train_zen.py` (the same run with hydra-zen configs), `evaluate.py`, `convert_notebooks.py` (jupytext → `.ipynb`), `capabilities.py` (the capability index) |
+| `configs/` | Hydra configs: `train.yaml` (defaults `model: baseline`, `data: small`; `training.*`, `logging.*`), `model/{baseline,transformer}.yaml`, `data/{small,full}.yaml` |
+| `dvc.yaml` | The pipeline: `preprocess` (`data/raw` → `data/processed`) → `train` (→ `results/metrics/train_metrics.json`, plot `results/figures/loss_curve.csv`) |
+| `data/{raw,processed,external}/`, `results/{metrics,figures,tables}/` | DVC-managed data and outputs (gitignored except `.gitkeep`) |
+| `notebooks/` | Jupytext percent-format `.py` notebooks (`01_eda.py`, `02_results.py`) |
+| `marimo_notebooks/` | marimo notebooks (`01_exploration.py`) |
+| `docs/`, `myst.yml`, `references.bib` | MyST documentation (notes, tutorials, API pages, capability index) and its bibliography |
+| `CITATION.cff` | How to cite the project |
+
+`scripts/evaluate.py` writes `results/metrics/eval_metrics.json` but is not
+a DVC stage yet; `configs/data/*.yaml` and `training.batch_size` /
+`val_interval` are not read by any script yet.
+
+### Boundaries
+
+These hold for every project made from the template:
+
+- **Dependencies point one way: scripts and notebooks → package.** The
+  package never imports a script, Hydra, DVC or a notebook. It takes plain
+  arguments (numbers, paths, arrays), not a `DictConfig`, so it can be
+  tested and reused without a config.
+- **Side effects live in scripts.** Reading configs, choosing paths, writing
+  metrics and figures happen in `scripts/`; the package computes. A
+  function that a script and a notebook both need belongs in the package.
+- **Data and results never go into git.** They are DVC outputs or `dvc add`
+  pointers; `.gitignore` keeps `data/*` and `results/*` out.
+- **No GeoML-stack library is a dependency of the template.** A project
+  that builds on one (gaussx, pyrox, xtremax, …) lists it in
+  `UPSTREAM` in `scripts/capabilities.py` so its API joins the capability
+  index.
+
+## What it is built on
+
+Each tool brings a rule. Breaking one runs fine once on your machine and
+fails on the next run, the next machine or in CI.
+
+| Tool | Used for | The rule it brings |
+|---|---|---|
+| **pixi** (`pixi.toml`, `pixi.lock`) | The runtime and CI environment: Python, NumPy, SciPy, xarray, netCDF4, matplotlib, DVC, hydra-core, hydra-zen, OmegaConf (conda-forge first, PyPI second); extra environments `docs`, `jupyterlab`, `marimo` | CI's test, lint, type-check, DVC and docs workflows run through `pixi run`. A runtime dependency goes into `pixi.toml` and the lock is regenerated (`pixi lock`, commit `pixi.lock`). Never `pip install` / `conda install` into an environment by hand. |
+| **uv** (`pyproject.toml`, `Makefile`) | The local developer loop: pytest, ruff, ty, pre-commit, the MyST CLI | `pyproject.toml` declares no runtime dependencies, so the uv environment holds the tooling (the `docs` group happens to bring NumPy through matplotlib) but not Hydra or DVC: run tests, lint, types and docs with `make` / `uv run`, experiments with `pixi run`. Always `uv run`, never the system Python. |
+| **Hydra** + **OmegaConf** (`configs/`, `scripts/train.py`) | Every setting of a run, composed from config groups and overridden on the command line | No hard-coded hyperparameter, seed, split or path in a script; read it from `cfg`. Outputs the pipeline tracks go to fixed project-root paths (`get_original_cwd()`), not into Hydra's run directory. |
+| **hydra-zen** (`scripts/train_zen.py`) | Configs generated from Python signatures (`builds`, `make_config`, `ZenStore`) | The structured config is built from the class it configures (`builds(TheClass, populate_full_signature=True)`), so the two cannot drift apart. |
+| **DVC** (`dvc.yaml`, `.dvc/`, `.dvcignore`) | Data versioning and the pipeline from raw data to metrics | Every stage declares everything it reads (`deps`, `params`) and everything it writes (`outs`, `metrics`, `plots`); commit `dvc.lock` and `.dvc` pointer files, never the data. |
+| **NumPy** / `random` (optionally PyTorch) | Numerics and random draws | Seed once per run, from the config, with the package's seeding helper (`seed_everything(cfg.training.seed)` in the example); in new code prefer an explicit `np.random.default_rng(seed)` passed down. |
+| **jupytext** / **marimo** | Notebooks as plain `.py` files | No `.ipynb` is committed (`*.ipynb` is gitignored); notebooks import from the package instead of defining reusable code. |
+| **MyST** (`mystmd`, `myst.yml`) | Documentation and the write-up, with citations from `references.bib` | Pages are MyST Markdown listed in the `myst.yml` toc; cite with `[@key]`. |
+| **pytest**, **ruff**, **ty** | Tests, lint and format (line length 88), type checks | See "Before every commit". |
+
+## Reuse before you write
+
+Before writing a loader, a model, a training step, a metric or a helper —
+in the package, a script or a notebook — find out whether it exists:
+
+1. **Search the capability index.**
+   [`docs/api/capabilities.md`](docs/api/capabilities.md) lists every
+   public name in the package, once, with a one-line summary. It is
+   generated (`make capabilities`) and checked by
+   `tests/test_capabilities.py`, so it is current.
+2. **Search the scripts and configs**: an entry point may already do it
+   (`scripts/`), and a setting may already exist (`configs/`).
+3. **If it is missing, add it to the package** in the subpackage that owns
+   the concept (data loading, models, training, utilities), with a test,
+   not inline in the one script or notebook that needs it today.
+4. **One object, one name.** Two modules never export the same name for
+   different things (`tests/test_capabilities.py`); a deliberate exception
+   goes into `ALLOWED_SHARED_NAMES` in `scripts/capabilities.py` with its
+   reason.
+
+<!-- template-example: the names below are the example's; rewrite for your package. -->
+
+| You are about to write… | Use instead |
+|---|---|
+| `random.seed(…)`, `np.random.seed(…)`, `torch.manual_seed(…)` at the top of a script | `myproject.utils.reproducibility.seed_everything(cfg.training.seed)` |
+| File reading from `data/raw` or `data/processed` in a script or notebook | `load_raw_data`, `load_processed_data` (extend them) |
+| An epoch loop in a script | `Trainer.train` |
+| A model class in a script or notebook | `src/myproject/models/` (`BaselineModel` as the pattern) |
+| A literal learning rate, epoch count, seed or split fraction | a key in `configs/` (`training.lr`, `training.seed`, `configs/data/*.yaml`), overridden on the command line |
+| A config dataclass written by hand | hydra-zen `builds(TheClass, populate_full_signature=True)` |
+| A shell script that runs the steps in order | a stage in `dvc.yaml`, run with `dvc repro` |
+| A loop calling `jupytext` / `nbconvert` to make `.ipynb` files | `scripts/convert_notebooks.py` (`pixi run notebooks-to-ipynb`) |
+| `os.path.join`, string paths | `pathlib.Path` |
+| A reference typed into a page | an entry in `references.bib`, cited with `[@key]` |
+
+## The contracts
+
+### 1. The package: pure, typed, tested
+
+- Reusable code lives in `src/<package>/`, one concept per subpackage; the
+  public functions and classes have type hints and Google-style docstrings
+  and appear in the capability index.
+- Functions take plain arguments (paths as `str | Path`, numbers, arrays)
+  and return values; they do not read configs, environment variables or
+  global state, and do not write files unless that is their job and the
+  path is an argument.
+- Randomness comes from a seed or generator the caller passes, or from
+  `seed_everything` called once by the entry point.
+- Every public function or class has a test in `tests/`.
+
+### 2. Configs: every setting in `configs/`
+
+- `configs/train.yaml` is the entry config; alternatives are config groups
+  (`configs/model/`, `configs/data/`) chosen with `model=<name>` /
+  `data=<name>` and composed through its `defaults` list.
+- A script reads every value from `cfg`; a new hyperparameter is a new key,
+  with its default in the YAML, never a literal in Python.
+- A config group option must provide every key the script reads from that
+  group (in the example, `train.py` reads `cfg.model.hidden_size` and
+  `cfg.model.num_layers` whichever `model=` is chosen).
+- Sweeps are Hydra multirun (`-m training.lr=0.001,0.01`); a sweep whose
+  jobs write to the same fixed output path overwrites itself, so give each
+  job its own output or use DVC experiments.
+- The hydra-zen path (`scripts/train_zen.py`) generates its configs from
+  signatures; keep the two entry points configuring the same objects.
+
+### 3. The pipeline: DVC stages declare everything
+
+- Each stage in `dvc.yaml` has a `cmd` and lists as `deps` the script, the
+  package code it imports and the data it reads; as `params` the config
+  keys it uses (keys that exist in the params file — a Hydra defaults group
+  such as `model` is not a key of `configs/train.yaml`; depend on the group
+  file instead); as `outs` what it writes. An output path must not contain
+  files git tracks: DVC refuses to reproduce such a stage (in the example,
+  `data/processed/.gitkeep` is tracked and `data/processed` is an output).
+- Metrics are JSON under `results/metrics/` declared with `cache: false`;
+  plots (CSV or JSON) under `results/figures/`; the script writes exactly
+  the paths the stage declares.
+- Raw data enters with `dvc add` (commit the `.dvc` pointer) and leaves
+  with `dvc push`; `dvc.lock` is committed after `dvc repro`.
+- What DVC expects in git must not be gitignored: the `.dvc` pointers and
+  the `cache: false` metrics files (without them in `HEAD`,
+  `dvc metrics diff` has nothing to compare). `git check-ignore -v <path>`
+  shows the rule that hides a file; the template's `data/raw/*` and
+  `results/metrics/*` rules need `!data/raw/*.dvc` /
+  `!results/metrics/*.json` exceptions once you use them.
+
+### 4. Results: regenerable from a commit
+
+- A number or figure in the docs or a paper comes from a pipeline output
+  (or a notebook that reads one), never from a one-off session.
+- Train / validation / test splits are made once, from config fractions and
+  a seed, before any fitting; statistics used to transform data are fitted
+  on the training split only.
+
+### 5. Notebooks
+
+- `notebooks/*.py` are jupytext percent-format scripts: a YAML header, then
+  `# %%` / `# %% [markdown]` cells. `.ipynb` files are generated locally
+  (`pixi run notebooks-to-ipynb`) and never committed.
+- `marimo_notebooks/*.py` are marimo apps (`app = marimo.App(...)`,
+  `@app.cell` functions) with a PEP 723 `# /// script` header listing their
+  dependencies.
+- Notebooks import from the package and read pipeline outputs; figures for
+  the docs are saved under `docs/images/<notebook_name>/` and committed with
+  the notebook.
+- ruff skips both directories (`exclude` in `pyproject.toml`); CI only
+  checks that `notebooks/*.py` parse.
+
+### 6. Docs and citation
+
+- Pages are MyST Markdown under `docs/`, each listed in the `myst.yml` toc;
+  the bibliography is `references.bib`; `CITATION.cff` says how to cite the
+  project and is validated in CI when it changes.
+
+## What enforces them
+
+<!-- template-example: the test rows describe the example's tests; rewrite them. -->
+
+| Check | Enforces |
+|---|---|
+| `tests/test_data.py` | The loaders return the documented keys |
+| `tests/test_models.py` | `BaselineModel` defaults, custom parameters, `repr`, `forward` |
+| `tests/test_capabilities.py` | `docs/api/capabilities.md` is current; no name bound to two objects |
+| ruff (`make lint`), ty (`make typecheck`) | Lint (`E F I UP B SIM RUF`) and types on `src/` |
+| `.pre-commit-config.yaml` (`make precommit`) | ruff, ruff-format, whitespace, YAML / JSON syntax, files over 5 MB |
+| `notebooks.yml` | `notebooks/*.py` parse; warns on committed `.ipynb` |
+| `dvc-check.yml` | `dvc status` and `dvc dag` run on PRs touching the pipeline |
+| `experiment-report.yml` | A PR comment with `dvc metrics diff`, `dvc params diff`, `dvc status` |
+| `reproducibility.yml` | The whole pipeline (`dvc repro`) weekly and on demand |
+| `citation.yml` | `CITATION.cff` validates |
+| `conventional-commits.yml` | PR titles are Conventional Commits with a lowercase subject |
+
+Nothing tests `Trainer`, `seed_everything` or the scripts yet, and nothing
+checks that a config group provides the keys a script reads: review those
+by hand.
+
+## Working in the repo
+
+Two environment managers share the repo. uv (via `make`) is the local
+developer loop; pixi is what CI and the experiments run in.
 
 ```bash
-# Install all environments
-pixi install
-
-# Install specific environment
-pixi install -e jupyterlab
+make install              # uv sync --all-groups + pre-commit hooks
+make test                 # uv run pytest -v -o addopts=   (no coverage)
+make test-cov             # pytest with the coverage report (pyproject addopts)
+make lint                 # ruff check .   (entire repo)
+make format               # ruff format . && ruff check --fix .
+make typecheck            # ty check src/myproject
+make precommit            # pre-commit on every file
+make capabilities         # regenerate docs/api/capabilities.md
+make docs                 # myst build --html  (into _build/html)
+make docs-serve           # myst start (live preview)
+make help                 # every target
 ```
-
-## Project Structure
-
-```
-research_template/
-├── configs/          # Hydra configuration hierarchy
-├── data/             # Data directories (managed by DVC)
-├── docs/             # MyST documentation
-├── marimo_notebooks/ # Marimo reactive notebooks
-├── notebooks/        # Jupytext percent-format .py scripts (no .ipynb in repo)
-├── results/          # Experiment results (managed by DVC)
-├── scripts/          # Entry point scripts
-├── src/myproject/    # Source package
-└── tests/            # Test suite
-```
-
-## Development Commands
 
 ```bash
-# Run tests
-pixi run test
-
-# Lint code
-pixi run lint
-
-# Format code
-pixi run format
-
-# Type check
-pixi run typecheck
-
-# Run all pre-commit hooks
-pixi run precommit
-```
-
-## Running Experiments
-
-```bash
-# Preprocess data
-pixi run preprocess
-
-# Train with default config
-pixi run train
-
-# Train with hydra-zen
-pixi run train-zen
-
-# Train with overrides
-pixi run train training.lr=0.001 model=transformer
-
-# Evaluate
-pixi run evaluate
-```
-
-## DVC Conventions
-
-- **Never commit raw data** to git. Use `dvc add` and `dvc push`.
-- Run `dvc repro` to reproduce the full pipeline.
-- Check pipeline status with `dvc status`.
-- View pipeline DAG with `dvc dag`.
-- Commit `.dvc` pointer files and `dvc.lock` to git.
-
-```bash
-# Add a data file to DVC tracking
-dvc add data/raw/dataset.csv
-
-# Push data to remote storage
-dvc push
-
-# Pull data from remote storage
-dvc pull
-
-# Reproduce the pipeline
-dvc repro
-
-# Check what has changed
-dvc status
-```
-
-## Hydra / hydra-zen Conventions
-
-- Config files live in `configs/`.
-- Use `configs/train.yaml` as the main entry point config.
-- Override values on the command line: `python scripts/train.py training.lr=0.01`.
-- Use multirun for sweeps: `python scripts/train.py -m training.lr=0.001,0.01,0.1`.
-- hydra-zen configs are defined in `scripts/train_zen.py` using `builds()` and `make_config()`.
-
-## Documentation
-
-```bash
-# Serve docs locally
-pixi run -e docs docs-serve
-
-# Build static HTML
-pixi run -e docs docs-build
-```
-
-## Notebook Environments
-
-```bash
-# JupyterLab
+pixi install                          # the default environment (-e <env> for another)
+pixi run test                         # pytest -v with coverage (what CI runs)
+pixi run lint                         # ruff check src/   (what CI runs)
+pixi run typecheck                    # ty check src/     (what CI runs)
+pixi run preprocess                   # also: train, train-zen, evaluate
+pixi run train training.lr=0.01 model=baseline   # Hydra overrides
+pixi run dvc repro                    # the whole pipeline (dvc repro <stage>: one stage + upstream)
+pixi run dvc status                   # what changed since dvc.lock
+pixi run dvc dag                      # the stage graph
+pixi run dvc add data/raw/<file>      # track a raw file (commit the .dvc pointer)
+pixi run dvc push                     # upload data (dvc pull downloads); needs a
+                                      # remote: dvc remote add -d <name> <url>
+pixi run dvc metrics diff             # compare metrics with the last commit
+pixi run notebooks-to-ipynb           # notebooks/*.py → .ipynb (local only)
+pixi run -e docs docs-build           # what pages.yml runs
 pixi run -e jupyterlab lab
-
-# Marimo
 pixi run -e marimo marimo-edit
 ```
 
-## Code Style
+The pixi `lint` and `format` tasks cover `src/` only; lint and format the
+whole repo with the `make` targets (or `uv run --group lint ruff check .`).
+Hydra 1.3 does not run on Python 3.14 (`ValueError: badly formed help
+string` from argparse): if `pixi run train` fails that way, the pixi
+environment resolved Python 3.14; pin `python` below 3.14 in `pixi.toml`
+and re-lock.
 
-- Python >= 3.12
-- Ruff for linting and formatting (line-length 88)
-- Type annotations required for all public functions
-- Use `from __future__ import annotations` for forward references
+Run one test with `uv run pytest tests/test_models.py::test_baseline_model_init -v -o addopts=`.
 
----
+### Test tiers
 
-## Karpathy Coding Principles
+- No markers are registered: every test runs everywhere. CI ("CI",
+  `ci.yml`) runs `pixi run test` (`pytest -v` with the coverage `addopts`)
+  on Ubuntu and macOS, uploads `coverage.xml` and gates nothing on it.
+- `filterwarnings = ["error", "ignore::DeprecationWarning"]` turns any
+  other warning into a failure; `xfail_strict = true`.
+- Keep tests fast and offline. A test that needs data, a network or minutes
+  of compute gets a marker: register it under `markers` in
+  `[tool.pytest.ini_options]` first, deselect it in the `test` task, and
+  run it in a separate workflow.
+- The pipeline itself is checked by `reproducibility.yml` (`dvc repro`),
+  not by pytest.
 
-Four behavioral principles to reduce the most common LLM coding mistakes. These bias toward caution over speed — for trivial tasks, use judgment.
+### Tests that assert on random draws
 
-### 1. Think Before Coding
+- **Incidental randomness** (any draw would do): a fixed seed
+  (`np.random.default_rng(0)`, `seed_everything(0)`).
+- **Behaviour under test** (a sampler, a stochastic training step): bound
+  the statistic by its own sampling distribution (a number of standard
+  errors), not a tolerance tuned on one draw, and say in a comment where
+  the bound came from.
 
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
+### Before every commit
 
-Before implementing:
+All of these must pass, from the repo root:
 
-- State assumptions explicitly. If uncertain, ask before writing code.
-- If multiple interpretations exist, present them — don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
+1. `make test` (or `pixi run test`): zero failures.
+2. `uv run --group lint ruff check .`: the **entire** repo, including
+   `tests/` and `scripts/` (notebooks are excluded by the ruff config).
+3. `uv run --group lint ruff format --check .`
+4. `make typecheck` (or `pixi run typecheck`).
+5. After changing a public name in the package: `make capabilities`.
+6. After changing `dvc.yaml`, a stage's script or its configs:
+   `pixi run dvc status` and `pixi run dvc dag`, and `pixi run dvc repro`
+   for the stages you touched (commit `dvc.lock`).
+7. After changing a dependency: `pixi lock` and commit `pixi.lock`.
+8. After changing `docs/`, `myst.yml` or `references.bib`: `make docs`.
 
-### 2. Simplicity First
+## Coding principles
 
-**Minimum code that solves the problem. Nothing speculative.**
+1. **Think before coding.** State assumptions; if a request has several
+   readings, name them instead of picking one silently; if something is
+   unclear, stop and ask; push back when a simpler approach exists.
+2. **Simplicity first.** The minimum code that solves the problem: no
+   speculative features, no single-use abstractions, no configurability
+   nobody asked for, no error handling for impossible cases.
+3. **Surgical changes.** Touch only what the task needs; match the existing
+   style; don't refactor or add docstrings to code you didn't change;
+   remove only what your change made unused, and mention (don't delete)
+   unrelated dead code.
+4. **Goal-driven.** Turn the task into a check (a failing test, a
+   reproduced bug, a metric to match) and loop until it passes; for
+   multi-step work state the plan with a check per step.
 
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If 200 lines could be 50, rewrite it.
+Also: Python 3.12+, `from __future__ import annotations` in every module,
+type hints on every public function, `X | None` over `Optional`,
+`pathlib.Path` for filesystem work, specific exceptions with
+`raise … from …`, ruff with line length 88.
 
-Test: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+## Git, commits and pull requests
 
-### 3. Surgical Changes
+- **Never** push to or merge into `main` / `master` unless explicitly told
+  to ("push to main", "merge to main"). Work on a feature branch and commit
+  locally; never run `git push` unless asked. "Merge the branch" means push
+  the feature branch, not merge into `main`. Confirm before any action that
+  affects a shared branch.
+- Commit messages and PR titles follow
+  [Conventional Commits](https://www.conventionalcommits.org/)
+  (`<type>[optional scope]: <description>`) with a lowercase subject;
+  `conventional-commits.yml` validates PR titles. Types: `feat`, `fix`,
+  `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`,
+  `revert`. Breaking changes use `!` and a `BREAKING CHANGE:` footer.
+- Releases are cut by release-please (`release-please-config.json`: one
+  Python package at `.`, tags `<package-name>-vX.Y.Z`, the version bumped in
+  `pyproject.toml`); don't bump versions by hand. A release is a natural
+  point to archive results (Zenodo DOI, `CITATION.cff`).
+- **Never replace or remove an existing PR title or description.** An
+  agent called for a small follow-up tends to write a fresh description
+  scoped to its own work and silently discard the rest: read the existing
+  description first, treat it as the base, and only append checklist items
+  or update their status.
+- Code review follows [`CODE_REVIEW.md`](CODE_REVIEW.md); issues follow the
+  label taxonomy and epic model in [`CONTRIBUTING.md`](CONTRIBUTING.md)
+  (`make gh-labels`, `gh-sub`, `gh-block`, `gh-show`).
 
-**Touch only what you must. Clean up only your own mess.**
+### Pull Request Review Comments
 
-When editing existing code:
+After fixing a review comment, resolve its thread. Don't resolve threads you
+didn't address.
 
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it — don't delete it.
+```bash
+# 1. List the review threads and their IDs
+gh api graphql -f query='
+  query($owner: String!, $repo: String!, $pr: Int!) {
+    repository(owner: $owner, name: $repo) {
+      pullRequest(number: $pr) {
+        reviewThreads(first: 100) {
+          nodes { id isResolved comments(first: 1) { nodes { body path line } } }
+        }
+      }
+    }
+  }' -f owner=OWNER -f repo=REPO -F pr=PR_NUMBER
 
-When your changes create orphans:
-
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
-
-Test: Every changed line should trace directly to the user's request.
-
-### 4. Goal-Driven Execution
-
-**Define success criteria. Loop until verified.**
-
-Transform imperative tasks into declarative goals with verification:
-
-- "Add validation" → Write tests for invalid inputs, then make them pass
-- "Fix the bug" → Write a test that reproduces it, then make it pass
-- "Optimize X" → Write the naive correct version first, then optimize while preserving correctness
-
-For multi-step tasks, state a brief plan:
-
+# 2. Resolve an addressed thread
+gh api graphql -f query='mutation($threadId: ID!) {
+  resolveReviewThread(input: {threadId: $threadId}) { thread { isResolved } } }' \
+  -f threadId=THREAD_ID
 ```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
-```
 
-**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+When the `gh` CLI is unavailable, use the GitHub MCP tools for the same
+operations.
 
----
+## Documentation
 
-## Before Every Commit
+MyST Markdown built by the `mystmd` CLI from `myst.yml` at the repo root
+(book theme); `pages.yml` builds it (`pixi run -e docs docs-build`) and
+deploys `_build/html` to GitHub Pages on every push to `main`. No workflow
+builds the docs on a pull request, so run `make docs` yourself.
 
-**All agents must** verify that every one of the following passes before creating a commit or reporting progress. No exceptions.
+- **Pages** live under `docs/` (`notes/` for background and methods,
+  `tutorials/`, `api/`), each listed in the `toc` of `myst.yml`; a page
+  that is not in the toc is not built into the site.
+- **Citations**: add the BibTeX entry to `references.bib` and cite it with
+  `[@key]` (or `{cite:t}` / `{cite:p}`).
+- **Figures** from notebooks go to `docs/images/<notebook_name>/`, committed
+  together with the notebook that makes them.
+- **Notebooks** are not rendered into the site; the docs show their saved
+  figures.
+- **API pages**: `docs/api/capabilities.md` is generated
+  (`make capabilities`); `docs/api/reference.md` is hand-written.
 
-1. **Tests** – `pixi run test` must have 0 failures.
-2. **Lint** – `pixi run lint` must report no issues.
-3. **Format** – `pixi run format` must leave the working tree clean (no diff) after formatting.
-4. **Type checks** – `pixi run typecheck` must report no errors in changed files.
+## Plans
 
-## Pull Request Descriptions
-
-**Never replace or remove an existing PR title or description.** When reporting progress on a PR that already has a title and description, only append new checklist items or update the status of existing ones. The original content must be preserved in full.
-
-This is a common failure mode: an agent called to make a small follow-up change will supply a fresh description scoped only to its own work, silently discarding all prior context. Always read the existing description first and treat it as the base.
-
-## GIT Safety Rules
-
-- **NEVER** push to `main`/`master` or merge into `main`/`master` unless the user explicitly says "push to main" or "merge to main".
-- **NEVER** push to any remote branch or run `git push` unless the user explicitly asks you to push. Only commit locally.
-- Always work on feature branches.
-- When the user says "merge the changes" or "merge the branch", they mean push the local branch to the remote — NOT merge into main.
-- Always confirm before any action that affects shared branches (main, master, production, etc.).
-
-## Commit Messages
-
-All commit messages **must** follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
-
-```
-<type>[optional scope]: <description>
-
-[optional body]
-
-[optional footer(s)]
-```
-
-Valid types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
-
-Examples:
-- `feat: add new data loading utility`
-- `fix: correct off-by-one error in slice computation`
-- `docs: update installation instructions`
-- `chore: bump ruff to 0.9.7`
+Plans and scratch design notes go in `.plans/` (gitignored, never
+committed); track work in GitHub issues (`docs/templates/wave-backlog.md`
+drafts a whole wave of them).

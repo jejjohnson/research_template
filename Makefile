@@ -56,7 +56,7 @@ RESET  := \033[0m
 # ---------------------------------------------------------------------------
 .PHONY: help install lint format typecheck test test-cov \
 	precommit build clean version docs docs-serve docs-deploy \
-	init gh-labels gh-sub gh-block gh-show
+	init gh-labels gh-sub gh-block gh-show capabilities
 
 .DEFAULT_GOAL := help
 
@@ -165,6 +165,9 @@ docs: ## Build documentation with MyST
 
 docs-serve: ## Serve documentation locally
 	uv run --group docs myst start
+
+capabilities: ## Regenerate docs/api/capabilities.md (every public name, for reuse)
+	uv run python scripts/capabilities.py
 
 docs-deploy: ## Deploy documentation to GitHub Pages
 	uv run --group docs myst build --html
