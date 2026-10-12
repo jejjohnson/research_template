@@ -50,8 +50,8 @@ files "My Research Project" | xargs sed -i "s/My Research Project/$TITLE/g"
   `.release-please-manifest.json` and the versions in `pyproject.toml`,
   `pixi.toml`, `CITATION.cff` and `src/<NEW>/__init__.py` to your starting
   version — release-please manages them from then on;
-- `pixi.lock` and `uv.lock`: regenerate, never edit
-  (`pixi lock`, `uv lock`);
+- `pixi.lock`: regenerate, never edit (`pixi lock`); `uv.lock` is
+  gitignored (pixi is the lockfile of record);
 - `.devcontainer/devcontainer.json` `name`, the README badges and
   description, `references.bib`.
 
@@ -60,18 +60,19 @@ files "My Research Project" | xargs sed -i "s/My Research Project/$TITLE/g"
 The example package, configs, stages and notebooks are placeholders:
 
 - `src/<NEW>/data/loading.py`, `models/baseline.py`,
-  `trainers/trainer.py` and their tests (`tests/test_data.py`,
-  `tests/test_models.py`): replace them with your code as you write it
-  (the `add-dataset` and `add-model` skills); delete what you do not need.
+  `models/transformer.py`, `trainers/trainer.py` and their tests
+  (`tests/test_data.py`, `tests/test_models.py`, `tests/test_configs.py`):
+  replace them with your code as you write it (the `add-dataset` and
+  `add-model` skills); delete what you do not need.
   `utils/reproducibility.py` (`seed_everything`) is generic: keep it.
 - `configs/model/*.yaml`, `configs/data/*.yaml`, `configs/train.yaml`:
   your groups and keys.
 - `dvc.yaml` and `scripts/`: your stages (the `add-experiment` skill).
-  The example pipeline does not run as shipped — `data/processed/.gitkeep`
-  is tracked inside a stage output, `params` names the `model` group, and
-  `results/metrics/*` / `data/raw/*` are gitignored without exceptions for
-  the files DVC expects in git; the `reproduce-results` skill's table has
-  the fixes.
+  The example pipeline runs as shipped on an empty `data/raw/`
+  (`pixi run dvc repro`); keep its conventions as you replace it: no
+  git-tracked file inside a stage output, `params` naming real keys, and
+  the `.gitignore` exceptions for the `.dvc` pointers and `cache: false`
+  metrics DVC expects in git.
 - `notebooks/`, `marimo_notebooks/`, `docs/notes/*.md`: your analyses and
   write-up.
 

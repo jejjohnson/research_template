@@ -106,43 +106,34 @@ Follow `scripts/train.py`:
   (`deps: [configs/model/baseline.yaml]`, or the whole `configs/`).
 - No `outs` path may contain a git-tracked file (a `.gitkeep`), or DVC
   refuses to run the stage.
+- Metrics are a flat JSON dict of scalars (final or summary values);
+  per-epoch or per-step values go in the plots file, which is what
+  notebooks plot from (`scripts/train.py`'s `write_outputs` is the
+  pattern).
 - A `cache: false` metrics file is meant to be committed to git, so
-  `dvc metrics diff` can compare it with `HEAD`; check
-  `git check-ignore -v results/metrics/<file>.json` and add a `!` exception
-  to `.gitignore` if a rule hides it.
+  `dvc metrics diff` can compare it with `HEAD`. `.gitignore` keeps
+  `results/metrics/*.json` (`!results/metrics/*.json`); for a metrics file
+  elsewhere, check `git check-ignore -v <file>` and add a `!` exception if
+  a rule hides it.
 
 ## 6. Tests
 
 - Package code the experiment needs: unit tests in `tests/`, as usual.
-- The config composes and provides what the scripts read (Hydra is in the
-  pixi environment only, so the test skips elsewhere):
+- The config composes and provides what the scripts read: add a case to
+  `tests/test_configs.py`, next to the `model=` cases, reusing its
+  `_compose` and `_load_script` helpers (Hydra is in the pixi environment
+  only, so the module skips elsewhere):
 
 ```python
-"""Every experiment config composes and provides the keys the scripts read."""
-
-from __future__ import annotations
-
-from pathlib import Path
-
-import pytest
-
-
-pytest.importorskip("hydra")
-from hydra import compose, initialize_config_dir
-
-
-CONFIGS = Path(__file__).resolve().parents[1] / "configs"
 EXPERIMENTS = sorted(p.stem for p in (CONFIGS / "experiment").glob("*.yaml"))
 
 
 @pytest.mark.parametrize("experiment", EXPERIMENTS)
 def test_experiment_composes(experiment: str) -> None:
-    with initialize_config_dir(version_base=None, config_dir=str(CONFIGS)):
-        cfg = compose(config_name="train", overrides=[f"+experiment={experiment}"])
+    cfg = _compose([f"+experiment={experiment}"])
     for key in ("lr", "epochs", "seed"):
         assert key in cfg.training
-    for key in ("hidden_size", "num_layers"):
-        assert key in cfg.model
+    _load_script("train").build_model(cfg.model)  # as train.py builds it
 ```
 
 ## 7. Verify

@@ -61,9 +61,9 @@ Commit `dvc.lock` (and the `cache: false` metrics) after a run you keep;
 |---|---|---|
 | `output '<path>' is already tracked by SCM` | A file inside an output directory is in git (a `.gitkeep`) | `git rm --cached <path>/.gitkeep`; the stage creates the directory |
 | `Parameters '<key>' are missing from '<file>'` | `params:` names something that is not a key of the file (a Hydra defaults group such as `model`) | List real keys; depend on the group's YAML file in `deps` |
-| `bad DVC file name … is git-ignored` on `dvc add` | A `.gitignore` rule hides the `.dvc` pointer | Add a `!<dir>/*.dvc` exception |
-| `ValueError: badly formed help string` from Hydra's argparse | Hydra 1.3 on Python 3.14 | Pin `python` below 3.14 in `pixi.toml`, `pixi lock`, `pixi install` |
-| `ConfigAttributeError: Key '<k>' is not in struct` | The chosen config group option lacks a key the script reads | Add the key to that option's YAML |
+| `bad DVC file name … is git-ignored` on `dvc add` | A `.gitignore` rule hides the `.dvc` pointer | Add a `!<dir>/*.dvc` exception (`data/raw/` and `data/external/` have one) |
+| `ValueError: badly formed help string` from Hydra's argparse | Hydra 1.3 on Python 3.14 (the environment is not the one `pixi.lock` pins, or the `python` pin in `pixi.toml` was lifted) | `pixi install`; keep `python` below 3.14 in `pixi.toml` until Hydra supports it, then `pixi lock` |
+| `ConfigAttributeError: Key '<k>' is not in struct`, or a `TypeError` from `instantiate` | The chosen config group option lacks a key the script reads, or its keys do not match its `_target_`'s constructor | Make the option's YAML provide every key the script reads (for `model=`, the class's constructor arguments); `tests/test_configs.py` builds every option |
 | Metrics change between identical runs | An unseeded draw, a global RNG used across stages, unordered file listings, threads / GPU non-determinism | The `reproducibility-reviewer` subagent; seed from the config, sort listings |
 | Every multirun job reports the same metrics file | Jobs write one fixed path | One `dvc exp run -S …` per point instead |
 | A stage reruns every time | A dependency changes on every run (a timestamp, a log, Hydra's `outputs/` inside a dep directory) | Narrow the `deps`, keep run directories out of them |

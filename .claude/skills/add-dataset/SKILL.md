@@ -28,9 +28,10 @@ git add data/raw/source.nc.dvc
 pixi run dvc push                          # needs a remote: dvc remote add -d <name> <url>
 ```
 
-- `.gitignore` ignores `data/raw/*`, which also hides the `.dvc` pointer
-  (`dvc add` stops with "bad DVC file name … is git-ignored"): add a
-  `!data/raw/*.dvc` line under `!data/raw/.gitkeep` once.
+- `.gitignore` ignores `data/raw/*` but not the `.dvc` pointers
+  (`!data/raw/*.dvc`); raw data in another ignored directory needs the
+  same exception, or `dvc add` stops with "bad DVC file name … is
+  git-ignored" (`git check-ignore -v <pointer>` shows the rule).
 - Data you download in a script is a DVC stage with the URL in its `cmd`
   or `dvc import-url <url> data/raw/<file>`, so the download is recorded.
 - Keep credentials out of the repo (`.env`, `.dvc/config.local`, both
@@ -75,10 +76,10 @@ test_split: 0.15
   site or period is never on both sides.
 - The `preprocess` stage in `dvc.yaml` lists the raw files, the script,
   `src/myproject/data` and the data config as `deps`, and `data/processed`
-  as its `outs`. No git-tracked file may sit inside an output directory: a
-  tracked `data/processed/.gitkeep` makes DVC refuse the stage — remove it
-  from git (`git rm --cached data/processed/.gitkeep`) once the stage
-  produces the directory.
+  as its `outs`. No git-tracked file may sit inside an output directory
+  (a `.gitkeep` makes DVC refuse the stage): the script creates the
+  directory (`mkdir(parents=True, exist_ok=True)`), and `.gitignore`
+  ignores all of `data/processed/`.
 
 ## 6. Tests (`tests/test_data.py`)
 
