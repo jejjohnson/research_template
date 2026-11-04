@@ -57,7 +57,7 @@ Follow `scripts/train.py`:
 - `seed_everything(cfg.training.seed)` first, if anything is random;
 - call the package — no model, loader or loop defined in the script;
 - write outputs under the project root (`Path(get_original_cwd()) / "results" / ...`), to exactly the paths the stage declares: metrics as a flat JSON dict of numbers in `results/metrics/<step>_metrics.json`, plots as CSV / JSON in `results/figures/`, tables in `results/tables/`;
-- add a pixi task in `pixi.toml` (`[tasks]`) if people will run it by hand.
+- add a pixi task in `[tool.pixi.tasks]` in `pyproject.toml` if people will run it by hand.
 
 ## 5. The DVC stage
 

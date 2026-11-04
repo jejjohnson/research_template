@@ -21,7 +21,7 @@ The diff (`git diff <base>...HEAD`, default base `main`) or the files you are gi
 5. **Metrics and outputs.** A metric written to a path or under keys that `dvc.yaml`, `experiment-report.yml`, `notebooks/02_results.py` or the docs do not read (or read with a different shape: scalars vs per-epoch lists); Hydra multirun jobs writing the same fixed path; results written into Hydra's run directory (`outputs/`, `multirun/`) when the pipeline expects them at the project root.
 6. **Paths.** Paths built from the current working directory instead of the project root (`get_original_cwd()` in Hydra scripts) or an argument; `os.path` strings; absolute paths to one machine; files read from outside `data/` or `results/`.
 7. **Results in the write-up.** A number, table or figure in `docs/` (or a notebook's conclusions) that no committed pipeline output or notebook produces; a figure under `docs/images/` without the notebook that makes it; a claim about a run without its config.
-8. **Environment.** A dependency used but not declared in `pixi.toml` (`pixi.lock` not regenerated); a package installed by hand; behaviour that differs between the uv and pixi environments (a test that needs Hydra must `pytest.importorskip("hydra")`).
+8. **Environment.** A dependency used but not declared in `[tool.pixi.*]` in `pyproject.toml` (`pixi.lock` not regenerated); a package installed by hand; behaviour that differs between the uv and pixi environments (a test that needs Hydra must `pytest.importorskip("hydra")`).
 
 ## Verify before reporting
 

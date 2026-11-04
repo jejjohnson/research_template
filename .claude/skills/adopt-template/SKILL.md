@@ -9,8 +9,8 @@ Work on a branch, step by step, and run the checks at the end; commit when they 
 
 | Name | Example | Where it appears |
 |---|---|---|
-| Import name | `myproject` | `src/myproject/`, imports, `PKGROOT`, `PACKAGE` in `scripts/capabilities.py`, `dvc.yaml` deps, docs |
-| Distribution name | `my-research-project` | `pyproject.toml`, `pixi.toml`, `release-please-config.json`, `pixi.lock` |
+| Import name | `myproject` | `src/myproject/`, imports, `PACKAGE` in `scripts/capabilities.py`, `dvc.yaml` deps, docs |
+| Distribution name | `my-research-project` | `pyproject.toml`, `release-please-config.json`, `pixi.lock` |
 | Title | `My Research Project` | `README.md`, `myst.yml`, `CITATION.cff`, `docs/index.md`, the package docstring |
 | GitHub `owner/repo` | `your-org/your-repo` | README badges and links, `CITATION.cff`, `docs/tutorials/getting_started.md` |
 | Author | `Jane Doe`, `Your Name` | `myst.yml`, `CITATION.cff`, `LICENSE`, `README.md` |
@@ -43,8 +43,8 @@ files "My Research Project" | xargs sed -i "s/My Research Project/$TITLE/g"
 (On macOS use `sed -i ''`.) Then by hand:
 
 - `your-org/your-repo`, the author and affiliation in `README.md`, `CITATION.cff`, `myst.yml`, `LICENSE` and `docs/tutorials/getting_started.md`;
-- `CHANGELOG.md`: empty it (keep the `# Changelog` heading) and set `.release-please-manifest.json` and the versions in `pyproject.toml`, `pixi.toml`, `CITATION.cff` and `src/<NEW>/__init__.py` to your starting version — release-please manages them from then on;
-- `pixi.lock`: regenerate, never edit (`pixi lock`); `uv.lock` is gitignored (pixi is the lockfile of record);
+- `CHANGELOG.md`: empty it (keep the `# Changelog` heading) and set `.release-please-manifest.json` and the versions in `pyproject.toml`, `CITATION.cff` and `src/<NEW>/__init__.py` to your starting version — release-please manages them from then on;
+- `pixi.lock`: regenerate, never edit (`pixi lock`); `uv.lock` is gitignored;
 - `.devcontainer/devcontainer.json` `name`, the README badges and description, `references.bib`.
 
 ## 3. Replace the example
@@ -75,21 +75,21 @@ The example package, configs, stages and notebooks are placeholders:
 ## 5. Regenerate and verify
 
 ```bash
-uv sync --all-groups
-uv run poe capabilities                       # rewrites docs/api/capabilities.md
-uv run poe test
-uv run --group lint ruff check .
-uv run --group lint ruff format --check .
-uv run poe typecheck
+pixi install
+pixi run capabilities                       # rewrites docs/api/capabilities.md
+pixi run test-fast
+pixi run lint
+pixi run format-check
+pixi run typecheck
 pixi lock && pixi install && pixi run test
 pixi run dvc dag
-uv run poe docs
+pixi run -e docs docs-build
 ```
 
 …and the grep of step 1 prints nothing outside `CHANGELOG.md` and this skill.
 
 ## 6. GitHub
 
-- `uv run poe gh-labels` creates the label taxonomy (`.github/scripts/create-labels.sh`; edit its `area:*` labels for your project first).
+- `pixi run gh-labels` creates the label taxonomy (`.github/scripts/create-labels.sh`; edit its `area:*` labels for your project first).
 - Settings → Pages → Source: GitHub Actions (for `pages.yml`); add a DVC remote (`pixi run dvc remote add -d <name> <url>`, credentials in `.dvc/config.local`) so `dvc push` / `pull` and the reproducibility workflow can reach the data.
 - Connect Zenodo for a DOI per release, and add it to `CITATION.cff`.

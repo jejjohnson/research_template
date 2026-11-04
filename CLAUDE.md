@@ -8,7 +8,7 @@ The rules for every agent live in `AGENTS.md`; this file adds only what is speci
 
 - **Template.** Passages marked `<!-- template-example: … -->` in the agent files describe the bundled example (`myproject`); after adopting the template, rewrite them from your own code (the `adopt-template` skill).
 - **Reuse first.** Search `docs/api/capabilities.md` (every public name in the package) before writing a loader, a model, a training step or a helper in a script or a notebook; the "Reuse before you write" table in `AGENTS.md` maps the usual hand-rolled code to what already exists.
-- **Two environments.** `uv run poe` / `uv run` for tests, lint, types and docs; `pixi run` for experiments, DVC and anything CI runs.
+- **One environment manager.** Everything runs through `pixi run <task>` (the `[tool.pixi.*]` tables in `pyproject.toml`; `pixi task list` shows them), the same commands CI runs.
 - **Skills** in `.claude/skills/` load on their own when a task matches their description (or run them as `/<name>`):
   - adopting the template: `adopt-template`;
   - research workflow: `add-experiment`, `add-dataset`, `add-model`, `add-notebook`, `reproduce-results`, `write-up-results`;

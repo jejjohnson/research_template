@@ -17,10 +17,10 @@
 # link endpoints take the issue's numeric `id`, which is resolved for you.
 # Set GH_REPO=owner/repo to act on another repo.
 #
-# Or via the poe tasks in pyproject.toml:
-#   uv run poe gh-sub 7 42 43 44
-#   uv run poe gh-block 44 43
-#   uv run poe gh-show 44
+# Or via the pixi tasks in pyproject.toml (several children in one quoted argument):
+#   pixi run gh-sub 7 "42 43 44"
+#   pixi run gh-block 44 43
+#   pixi run gh-show 44
 #
 # REST rather than GraphQL, because GraphQL is blocked in Claude sessions;
 # on your own machine both work.

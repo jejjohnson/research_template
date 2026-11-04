@@ -8,8 +8,8 @@ loader, a model, a training step or a helper in a script or a notebook
 
 Usage::
 
-    uv run poe capabilities                             # rewrite the index
-    uv run python scripts/capabilities.py --check       # fail if stale
+    pixi run capabilities                             # rewrite the index
+    pixi run python scripts/capabilities.py --check       # fail if stale
 
 ``tests/test_capabilities.py`` runs the check. The script is generic: it
 walks every non-private module of ``PACKAGE``. A module's public names are
@@ -219,7 +219,7 @@ def render() -> str:
         "sentence of its docstring. Search this page before writing a",
         "loader, a model, a training step or a helper in a script or a",
         "notebook: if what you need is here, use it; if it is almost here,",
-        "extend it where it lives. Regenerate with `uv run poe capabilities` after",
+        "extend it where it lives. Regenerate with `pixi run capabilities` after",
         "changing a public API (`tests/test_capabilities.py` checks it is",
         "current).",
         "",
@@ -264,7 +264,7 @@ def main() -> int:
     if args.check:
         current = INDEX.read_text(encoding="utf-8") if INDEX.exists() else ""
         if stale(current, text):
-            print(f"{INDEX.relative_to(ROOT)} is stale; run `uv run poe capabilities`")
+            print(f"{INDEX.relative_to(ROOT)} is stale; run `pixi run capabilities`")
             status = 1
     else:
         INDEX.write_text(text, encoding="utf-8")

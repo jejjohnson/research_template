@@ -40,8 +40,7 @@ except ModuleNotFoundError as err:
 def test_capability_index_is_current() -> None:
     current = capabilities.INDEX.read_text(encoding="utf-8")
     assert not capabilities.stale(current, capabilities.render()), (
-        "docs/api/capabilities.md is stale: run `uv run poe capabilities` "
-        "and commit it."
+        "docs/api/capabilities.md is stale: run `pixi run capabilities` and commit it."
     )
 
 

@@ -110,12 +110,11 @@ htmlcov/
 # Pixi
 .pixi/
 
-# uv: pixi.lock is the lockfile of record (runtime, experiments, CI); the uv
-# environment only holds local dev tooling (pytest, ruff, ty, mystmd), so its
-# lockfile is not committed.
+# uv: pixi is the environment manager and pixi.lock the lockfile of record; a
+# uv.lock made by running uv by hand is not committed.
 uv.lock
 
-# MyST build output (uv run poe docs)
+# MyST build output (pixi run -e docs docs-build)
 _build/
 
 # Plans and scratch notes (see AGENTS.md)

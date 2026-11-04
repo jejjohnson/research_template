@@ -37,7 +37,7 @@ wave-backlog drafting convention in docs/templates/wave-backlog.md.
 
 After the wave epic is opened, each theme epic listed below should also
 be linked as a SUB-ISSUE of this wave. One-shot:
-    uv run poe gh-sub <this#> <theme1#> <theme2#> <theme3#>
+    pixi run gh-sub <this#> "<theme1#> <theme2#> <theme3#>"
 -->
 
 
@@ -60,9 +60,9 @@ be linked as a SUB-ISSUE of this wave. One-shot:
 <!--
 After opening, apply native links:
   Sub-issues:  each Theme epic above becomes a sub-issue of this wave
-               (uv run poe gh-sub <this#> <theme#> <theme#>)
-  Blocked by:  uv run poe gh-block <this#> <prior-wave#>
-  Blocks:      uv run poe gh-block <next-wave#> <this#>
+               (pixi run gh-sub <this#> "<theme#> <theme#>)"
+  Blocked by:  pixi run gh-block <this#> <prior-wave#>
+  Blocks:      pixi run gh-block <next-wave#> <this#>
 Helper: `.github/scripts/link-issues.sh`.
 -->
 - Blocked by: #

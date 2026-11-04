@@ -5,7 +5,7 @@
 The public API of the `myproject` package, by module. The
 [capability index](capabilities.md) lists the same names with the first
 sentence of each docstring and is regenerated from the code
-(`uv run poe capabilities`); this page adds the signatures. The docstrings in
+(`pixi run capabilities`); this page adds the signatures. The docstrings in
 `src/myproject/` are the full reference.
 
 ## `myproject.data.loading`

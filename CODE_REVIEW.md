@@ -39,7 +39,7 @@ Skip anything ruff, ty or the tests already enforce (formatting, import order, u
 - Every function, class or module the diff **adds** has been checked against [`docs/api/capabilities.md`](docs/api/capabilities.md). A loader, model, training loop, seeding helper or metric re-implemented in a script or a notebook is a **High** finding, with the existing name to use.
 - Reusable logic is in the package (`src/<package>/`), with a test; scripts only read the config, call the package and write outputs; notebooks import from the package.
 - The package does not import Hydra, DVC, a script or a notebook, and does not read a `DictConfig`; it takes plain arguments.
-- A new public name is in the regenerated capability index (`uv run poe capabilities`).
+- A new public name is in the regenerated capability index (`pixi run capabilities`).
 
 ### 2. Configs
 
@@ -79,7 +79,7 @@ Skip anything ruff, ty or the tests already enforce (formatting, import order, u
 - `python-style` comments and naming: comments above the line, never beside it; a Unicode equation above each mathematical line; descriptive names, with the symbol only in the comment; one operation per line. In JAX code, its JAX rules too.
 - New non-Hydra CLIs and scripts use `cyclopts` and `loguru`, not argparse, click, typer, `print` progress or stdlib `logging`.
 - Maths in MyST pages and notebook markdown uses the `eman-style-math` macros, defines every symbol with its shape, keeps each expression on one line and has no spacing macros (`\,`, `\quad`, …); write-ups follow `eman-prose-tech` and never state a number the pipeline did not produce.
-- A new runtime dependency is in `pixi.toml` with `pixi.lock` regenerated (and in `pyproject.toml`'s `dependencies` when the package imports it); nothing is installed by hand.
+- A new runtime dependency is in `[tool.pixi.dependencies]` with `pixi.lock` regenerated (and in `[project] dependencies` when the package imports it); nothing is installed by hand.
 - No credentials, tokens or DVC remote secrets in the diff (they belong in `.env` or `.dvc/config.local`, both gitignored).
 
 ---

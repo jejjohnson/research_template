@@ -2,9 +2,8 @@
 
 ``scripts/train.py`` builds ``cfg.model`` from its ``_target_`` whichever
 ``configs/model/<name>.yaml`` is chosen, and ``scripts/train_zen.py`` offers
-the same options with the same defaults. Hydra and hydra-zen live in the pixi
-environment only, so these tests skip elsewhere (``uv run poe test`` in the uv
-environment).
+the same options with the same defaults. Hydra and hydra-zen come from the pixi
+environment, so these tests skip in an environment without them.
 """
 
 from __future__ import annotations

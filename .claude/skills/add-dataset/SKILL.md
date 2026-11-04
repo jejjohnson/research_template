@@ -33,7 +33,7 @@ pixi run dvc push                          # needs a remote: dvc remote add -d <
 - A function in `loading.py` (or a new module for a new family of formats) that takes the path as `str | Path` and returns arrays / `xarray` objects / a dict of them, raising `FileNotFoundError` with the path when it is missing — as `load_raw_data` does.
 - No config, no global state, no hard-coded path, no randomness: the script passes the path and the seed.
 - Type hints and a Google-style docstring in the `python-style` layout saying what is returned (shapes, units, dims), with any transformation it applies written as a Unicode equation.
-- A new third-party reader (netCDF4, xarray, pandas, …) goes into `pixi.toml` (then `pixi lock`); xarray and netCDF4 are already there.
+- A new third-party reader (netCDF4, xarray, pandas, …) goes into `[tool.pixi.dependencies]` in `pyproject.toml` (then `pixi lock`); xarray and netCDF4 are already there.
 
 ## 4. The config (`configs/data/<name>.yaml`)
 
@@ -63,15 +63,15 @@ test_split: 0.15
 
 ## 7. Export and index
 
-`uv run poe capabilities` after adding a public function, and commit `docs/api/capabilities.md`.
+`pixi run capabilities` after adding a public function, and commit `docs/api/capabilities.md`.
 
 ## 8. Verify
 
 ```bash
-uv run pytest tests/test_data.py -v -o addopts=
+pixi run pytest tests/test_data.py -v -o addopts=
 pixi run dvc status
 pixi run dvc repro preprocess
-uv run poe capabilities && uv run pytest tests/test_capabilities.py -o addopts=
+pixi run capabilities && pixi run pytest tests/test_capabilities.py -o addopts=
 ```
 
 Then the `pre-pr-check` skill.
