@@ -244,8 +244,8 @@ resolves during the work).
 
 ## Definition of Done
 - [ ] Code lands at the intended path
-- [ ] Tests pass: `uv run poe test`
-- [ ] Lint + typecheck pass: `uv run poe lint && uv run poe typecheck`
+- [ ] Tests pass: `pixi run test-fast`
+- [ ] Lint + typecheck pass: `pixi run lint && pixi run typecheck`
 
 ## Testing
 - [ ] Unit test: `<what it asserts>`
@@ -332,9 +332,9 @@ When the draft is ready to become real GitHub issues:
       need the native GitHub sub-issue and dependency links so the UI
       and automation pick up the hierarchy.
       - Sub-issues (wave → themes → features):
-        `uv run poe gh-sub <parent#> <child1#> <child2#> ...`
+        `pixi run gh-sub <parent#> "<child1#> <child2#> ...`"
       - Blocked-by:
-        `uv run poe gh-block <this#> <other#>`
+        `pixi run gh-block <this#> <other#>`
       - For bulk application, see `.github/scripts/link-issues.sh`.
 - [ ] Either delete this file or keep it as historical record in
       `.plans/archive/`.

@@ -29,7 +29,7 @@ The house style is the maintainer's `python-style` skill; `AGENTS.md` ("House st
 
 ## Package Preferences
 
-A runtime dependency goes into `pixi.toml` (and `pixi.lock` is regenerated); never `pip install` / `conda install` by hand.
+A runtime dependency goes into `[tool.pixi.dependencies]` in `pyproject.toml` (and `pixi.lock` is regenerated); never `pip install` / `conda install` by hand.
 
 | Purpose | Preferred Package |
 |---------|-------------------|

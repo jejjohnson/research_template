@@ -5,7 +5,7 @@ description: Apply native GitHub issue relationships (sub-issues, blocked-by) ov
 
 Apply native GitHub issue relationships (sub-issues and blocked-by) over the REST API.
 
-This is the repo's copy of the linking half of the maintainer's `gh-issue` skill (jejagents), with this repo's helper script and poe tasks. It works on top of the prose `## Relationships` block in `CONTRIBUTING.md`: the prose stays as the human-readable record, and this skill applies the matching native link so GitHub's UI and automation pick up the hierarchy.
+This is the repo's copy of the linking half of the maintainer's `gh-issue` skill (jejagents), with this repo's helper script and pixi tasks. It works on top of the prose `## Relationships` block in `CONTRIBUTING.md`: the prose stays as the human-readable record, and this skill applies the matching native link so GitHub's UI and automation pick up the hierarchy.
 
 Everything here uses `gh api` over REST, because GraphQL (and so `gh issue create`, `gh issue list`, `gh repo view` and `gh project`) is blocked in Claude sessions. On your own machine both work.
 
@@ -22,9 +22,9 @@ Everything here uses `gh api` over REST, because GraphQL (and so `gh issue creat
 `.github/scripts/link-issues.sh` wraps the endpoints below, resolves numbers to ids, treats an existing link as a no-op and paces bulk calls:
 
 ```bash
-uv run poe gh-sub 7 42 43 44    # 42, 43 and 44 become sub-issues of 7
-uv run poe gh-block 44 43       # 44 is blocked by 43
-uv run poe gh-show 44           # parent, sub-issues, blocked by, blocking
+pixi run gh-sub 7 "42 43 44"    # 42, 43 and 44 become sub-issues of 7
+pixi run gh-block 44 43       # 44 is blocked by 43
+pixi run gh-show 44           # parent, sub-issues, blocked by, blocking
 ```
 
 `unsub` and `unblock` are only on the script (`bash .github/scripts/link-issues.sh unsub <parent> <child>`). Set `GH_REPO=owner/repo` to act on another repo.
@@ -64,7 +64,7 @@ gh api repos/$R/issues/<n>/dependencies/blocking --jq '.[].number'
 2. Every `#NNN` in its `## Issues` (or `## Canonical Child Issues`) checklist becomes a sub-issue of the epic.
 3. Apply its `Blocked by:` and `Blocks:` lines from the `## Relationships` block.
 4. Skip `Related:` lines; they have no native link and stay as prose.
-5. Read the links back with `uv run poe gh-show <N>` and report them in one table.
+5. Read the links back with `pixi run gh-show <N>` and report them in one table.
 
 ## Common errors
 

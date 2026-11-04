@@ -9,10 +9,10 @@ The essentials, in case you only read this file:
 - Every setting lives in `configs/` (Hydra; hydra-zen in `scripts/train_zen.py`), never as a literal in a script.
 - Data and results are DVC-managed, never committed to git; every `dvc.yaml` stage declares its `deps`, `params`, `outs` and `metrics`; commit `dvc.lock`.
 - Notebooks are jupytext percent-format `.py` files in `notebooks/` and marimo apps in `marimo_notebooks/`; no `.ipynb` is committed.
-- Two environments: `uv run poe` / `uv run` for tests, lint, types and docs; `pixi run` for experiments and DVC (CI runs everything through pixi). Never `pip install` or `conda install` by hand.
+- One environment manager: pixi (the `[tool.pixi.*]` tables in `pyproject.toml`). Run everything through `pixi run <task>`, the same commands CI runs. Never `pip install` or `conda install` by hand.
 - House style ("House style" in `AGENTS.md`): the maintainer's `python-style` for Python (comments above the line, a Unicode equation above each mathematical line, descriptive names), `eman-style-math` for maths (Unicode in code and docstrings, macros in MyST pages), `eman-prose-tech` for write-ups, `cyclopts` and `loguru` for new non-Hydra scripts, Markdown never hard-wrapped, Mermaid rather than ASCII diagrams.
 - No AI attribution: no `Co-Authored-By:` trailer for an AI and no "Generated with …" line, unless asked. PR descriptions open with why, then a small before/after table; one `Closes #N` line per issue.
 - Propose a test with every feature or fix (write it first, then make it pass), and a concrete change with every review suggestion.
-- Before committing, from the repo root: `uv run poe test`, `uv run --group lint ruff check .`, `uv run --group lint ruff format --check .`, `uv run poe typecheck`; `uv run poe capabilities` after a public API change.
+- Before committing, from the repo root: `pixi run check` (lint, format check, types, tests); `pixi run capabilities` after a public API change.
 - Step-by-step recipes (adopt the template, add an experiment / dataset / model / notebook, reproduce results, write them up; pre-PR check; review) are plain Markdown in `.claude/skills/<name>/SKILL.md`, and the two review checklists (`reuse-reviewer`, `reproducibility-reviewer`) in `.claude/agents/`; follow them as written.
 - Path-scoped standards live in `.github/instructions/`; code review follows [`CODE_REVIEW.md`](../CODE_REVIEW.md).

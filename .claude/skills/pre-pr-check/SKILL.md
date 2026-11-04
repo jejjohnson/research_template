@@ -10,27 +10,18 @@ Run from the repo root and fix what fails before committing. Report results hone
 ## Always
 
 ```bash
-uv run poe test                                   # uv: every test, no coverage
-uv run --group lint ruff check .            # entire repo: tests/, scripts/
-uv run --group lint ruff format --check .
-uv run poe typecheck                              # ty on the package
+pixi run check          # lint (entire repo: tests/, scripts/), format check, ty, the tests with coverage
 ```
 
-CI runs the same through pixi (`ci.yml`, `lint.yml`, `typecheck.yml`), on Ubuntu and macOS for the tests; when pixi is installed, confirm with:
+These are the commands CI runs (`ci.yml`, `lint.yml`, `typecheck.yml`), on Ubuntu and macOS for the tests. `pixi run test-fast` skips coverage for quick iterations.
 
-```bash
-pixi run test                               # pytest -v with coverage (writes coverage.xml)
-pixi run lint
-pixi run typecheck
-```
-
-A test that needs Hydra or another pixi-only package starts with `pytest.importorskip(...)`, so it skips under uv and runs under pixi: when you touched configs or scripts, run `pixi run test`.
+A test that needs Hydra starts with `pytest.importorskip(...)`, so it skips in an environment without it; the pixi default environment has Hydra, so it runs there.
 
 ## When the package's public names changed
 
 ```bash
-uv run poe capabilities
-uv run pytest tests/test_capabilities.py -v -o addopts=
+pixi run capabilities
+pixi run pytest tests/test_capabilities.py -v -o addopts=
 ```
 
 …and commit `docs/api/capabilities.md`.
@@ -48,7 +39,7 @@ Commit `dvc.lock` (and `cache: false` metrics files) with the change; never comm
 
 ## When dependencies changed
 
-`pixi lock` and commit `pixi.lock` (a runtime dependency belongs in `pixi.toml`, and in `pyproject.toml`'s `dependencies` too when the package imports it); `uv.lock` is gitignored, since `pixi.lock` is the lockfile of record.
+`pixi lock` and commit `pixi.lock` (a runtime dependency belongs in `[tool.pixi.dependencies]`, and in `[project] dependencies` too when the package imports it).
 
 ## When notebooks changed
 
@@ -63,7 +54,7 @@ No `.ipynb` and no `__marimo__/` in `git status`; figures the docs use are commi
 ## When docs, `myst.yml`, `references.bib` or `CITATION.cff` changed
 
 ```bash
-uv run poe docs                                   # read the ⛔️ / ⚠️ lines for your pages
+pixi run -e docs docs-build                                   # read the ⛔️ / ⚠️ lines for your pages
 uvx cffconvert --validate -i CITATION.cff   # what citation.yml runs
 ```
 

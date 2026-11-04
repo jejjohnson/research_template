@@ -92,11 +92,11 @@ Content rules (from `report`):
 When the body has maths and the `eman-style-math` skill is installed, expand its macros and check the body before filing:
 
 ```bash
-uv run --with cyclopts --with loguru --with pyyaml python ~/.claude/skills/eman-style-math/scripts/expand_macros.py body.md
+pixi exec --spec python --spec cyclopts --spec loguru --spec pyyaml python ~/.claude/skills/eman-style-math/scripts/expand_macros.py body.md
 ```
 
 ```bash
-uv run --with cyclopts --with loguru --with pyyaml python ~/.claude/skills/eman-style-math/scripts/check_math.py body.md --target github
+pixi exec --spec python --spec cyclopts --spec loguru --spec pyyaml python ~/.claude/skills/eman-style-math/scripts/check_math.py body.md --target github
 ```
 
 ## 4. Pick labels
@@ -115,7 +115,7 @@ Every issue carries exactly one `type:*`, one or more `area:*`, one `wave:*` and
 | Research / literature survey | `type:research`, the relevant area |
 | Engineering / CI / packaging / DVC remote | `type:chore`, `area:engineering`, `wave:0` |
 
-The labels come from `.github/scripts/create-labels.sh` (`uv run poe gh-labels`): `type:{epic-wave,epic-theme,feature,bug,design,chore,docs,research}`, `area:{engineering,testing,docs,data,models,experiments,code}`, `dependencies`, `wave:0`…`wave:4`, `priority:{p0,p1,p2}`. `CONTRIBUTING.md` describes the taxonomy and the epic model; `gh label list` shows what exists and `gh api repos/:owner/:repo/milestones` the milestones.
+The labels come from `.github/scripts/create-labels.sh` (`pixi run gh-labels`): `type:{epic-wave,epic-theme,feature,bug,design,chore,docs,research}`, `area:{engineering,testing,docs,data,models,experiments,code}`, `dependencies`, `wave:0`…`wave:4`, `priority:{p0,p1,p2}`. `CONTRIBUTING.md` describes the taxonomy and the epic model; `gh label list` shows what exists and `gh api repos/:owner/:repo/milestones` the milestones.
 
 ## 5. Create
 
@@ -146,8 +146,8 @@ When the user wants to review in the browser instead, `gh issue create --web` op
 Apply the native links with `link-gh-issues`:
 
 ```bash
-uv run poe gh-sub <theme-epic#> <new-issue#>     # sub-issue of its theme epic
-uv run poe gh-block <new-issue#> <blocker#>      # blocked by another issue
+pixi run gh-sub <theme-epic#> <new-issue#>     # sub-issue of its theme epic
+pixi run gh-block <new-issue#> <blocker#>      # blocked by another issue
 ```
 
 Keep the prose `## Relationships` lines in the body; they coexist with the native links.
@@ -176,7 +176,7 @@ When the user has a `.plans/<wave>-backlog.md` drafted from `docs/templates/wave
 
 ## Common pitfalls
 
-- **Missing label:** the create call fails with a 422. Run `uv run poe gh-labels` on a fresh repo.
+- **Missing label:** the create call fails with a 422. Run `pixi run gh-labels` on a fresh repo.
 - **Missing milestone:** create it with `gh api repos/$R/milestones -f title="vX.Y-<slug>"`, then use its number.
 - **Frontmatter in the body:** strip the template's `---` block before writing the body file.
 - **Backticks:** pass bodies with `-F body=@file`, never inline, so code fences survive.

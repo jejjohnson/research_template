@@ -23,7 +23,7 @@ Follow `BaselineModel` (`models/baseline.py`):
 - the computation in methods (`forward(x)` in the example; whatever the trainer calls), with no file IO, config reading or global RNG; weights initialised from a seed or generator passed in, or after `seed_everything` by the entry point;
 - a `__repr__` showing the configuration;
 - type hints and a Google-style docstring in the `python-style` layout: the model's equation in Unicode (`eman-style-math`, never `$…$`), `Algorithm:` if `forward` implements a method, `Args:` with each name's meaning and symbol, and its reference (add the entry to `references.bib`); comments above the line, with the Unicode equation above each mathematical line;
-- a new framework dependency (torch, jax, …) goes into `pixi.toml` (then `pixi lock`); `seed_everything` already seeds PyTorch when it is installed.
+- a new framework dependency (torch, jax, …) goes into `[tool.pixi.dependencies]` in `pyproject.toml` (then `pixi lock`); `seed_everything` already seeds PyTorch when it is installed.
 
 ## 3. The config (`configs/model/<name>.yaml`)
 
@@ -50,15 +50,15 @@ Follow the `BaselineModel` tests: defaults, custom parameters, `repr`, and the f
 ## 6. Pipeline, export and docs
 
 - The `train` stage depends on `src/myproject/models` and `configs/` already; a model in a new package directory joins its `deps`.
-- `uv run poe capabilities`, and commit `docs/api/capabilities.md`.
+- `pixi run capabilities`, and commit `docs/api/capabilities.md`.
 - Describe the architecture in `docs/notes/methods.md` (the `write-up-results` skill).
 
 ## 7. Verify
 
 ```bash
-uv run pytest tests/test_models.py -v -o addopts=
+pixi run pytest tests/test_models.py -v -o addopts=
 pixi run pytest tests/test_configs.py -v -o addopts=   # every model= option builds, in both entry points
-uv run poe capabilities && uv run pytest tests/test_capabilities.py -o addopts=
+pixi run capabilities && pixi run pytest tests/test_capabilities.py -o addopts=
 pixi run train model=<name> training.epochs=2
 pixi run train-zen model=<name> trainer.epochs=2
 ```

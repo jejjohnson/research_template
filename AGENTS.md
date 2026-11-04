@@ -45,8 +45,7 @@ Each tool brings a rule. Breaking one runs fine once on your machine and fails o
 
 | Tool | Used for | The rule it brings |
 |---|---|---|
-| **pixi** (`pixi.toml`, `pixi.lock`) | The runtime and CI environment: Python, NumPy, SciPy, xarray, netCDF4, matplotlib, DVC, hydra-core, hydra-zen, OmegaConf (conda-forge first, PyPI second); extra environments `docs`, `jupyterlab`, `marimo` | CI's test, lint, type-check, DVC and docs workflows run through `pixi run`. A runtime dependency goes into `pixi.toml` and the lock is regenerated (`pixi lock`, commit `pixi.lock`); one the package imports also goes into `dependencies` in `pyproject.toml`, so the package installs on its own. Never `pip install` / `conda install` into an environment by hand. |
-| **uv** (`pyproject.toml`, its `[tool.poe.tasks]`) | The local developer loop: pytest, ruff, ty, pre-commit, the MyST CLI | `pyproject.toml` declares only the package's own runtime dependencies (NumPy), so the uv environment holds the package and the tooling but not Hydra or DVC: run tests, lint, types and docs with `uv run poe` / `uv run`, experiments with `pixi run`. `uv.lock` is gitignored: `pixi.lock` is the lockfile of record. Always `uv run`, never the system Python. |
+| **pixi** (`[tool.pixi.*]` in `pyproject.toml`, `pixi.lock`) | The one environment manager and task runner: Python, NumPy, SciPy, xarray, netCDF4, matplotlib, DVC, hydra-core, hydra-zen, OmegaConf (conda-forge first, PyPI second), the dev tools (pytest, ruff, ty, pre-commit) in the default environment, and extra environments `docs`, `jupyterlab`, `marimo` | Everything runs through `pixi run <task>`, locally and in CI; `pixi task list` shows the tasks. A dependency goes into `[tool.pixi.dependencies]` (or a feature) and the lock is regenerated (`pixi lock`, commit `pixi.lock`); one the package imports also goes into `[project] dependencies`, so the package installs on its own. Never `pip install` / `conda install` into an environment by hand, and never run the system Python. |
 | **Hydra** + **OmegaConf** (`configs/`, `scripts/train.py`) | Every setting of a run, composed from config groups and overridden on the command line | No hard-coded hyperparameter, seed, split or path in a script; read it from `cfg`. Outputs the pipeline tracks go to fixed project-root paths (`get_original_cwd()`), not into Hydra's run directory. |
 | **hydra-zen** (`scripts/train_zen.py`) | Configs generated from Python signatures (`builds`, `make_config`, `ZenStore`) | The structured config is built from the class it configures (`builds(TheClass, populate_full_signature=True)`), so the two cannot drift apart. |
 | **DVC** (`dvc.yaml`, `.dvc/`, `.dvcignore`) | Data versioning and the pipeline from raw data to metrics | Every stage declares everything it reads (`deps`, `params`) and everything it writes (`outs`, `metrics`, `plots`); commit `dvc.lock` and `.dvc` pointer files, never the data. |
@@ -59,7 +58,7 @@ Each tool brings a rule. Breaking one runs fine once on your machine and fails o
 
 Before writing a loader, a model, a training step, a metric or a helper — in the package, a script or a notebook — find out whether it exists:
 
-1. **Search the capability index.** [`docs/api/capabilities.md`](docs/api/capabilities.md) lists every public name in the package, once, with a one-line summary. It is generated (`uv run poe capabilities`) and checked by `tests/test_capabilities.py`, so it is current.
+1. **Search the capability index.** [`docs/api/capabilities.md`](docs/api/capabilities.md) lists every public name in the package, once, with a one-line summary. It is generated (`pixi run capabilities`) and checked by `tests/test_capabilities.py`, so it is current.
 2. **Search the scripts and configs**: an entry point may already do it (`scripts/`), and a setting may already exist (`configs/`).
 3. **If it is missing, add it to the package** in the subpackage that owns the concept (data loading, models, training, utilities), with a test, not inline in the one script or notebook that needs it today.
 4. **One object, one name.** Two modules never export the same name for different things (`tests/test_capabilities.py`); a deliberate exception goes into `ALLOWED_SHARED_NAMES` in `scripts/capabilities.py` with its reason.
@@ -131,8 +130,8 @@ The step-by-step for each is a skill (see "Recipes").
 | `tests/test_models.py` | `BaselineModel` and `TransformerModel` defaults, custom parameters, `repr`, `forward` |
 | `tests/test_configs.py` | Every `model=` option composes and builds as `train.py` builds it; `train_zen.py` offers the same options and defaults; `train.py` writes scalar metrics and a per-epoch plots CSV (skips without Hydra, i.e. outside pixi) |
 | `tests/test_capabilities.py` | `docs/api/capabilities.md` is current; no name bound to two objects |
-| ruff (`uv run poe lint`), ty (`uv run poe typecheck`) | Lint (`E F I UP B SIM RUF`) and types on `src/` |
-| `.pre-commit-config.yaml` (`uv run poe precommit`) | ruff, ruff-format, whitespace, YAML / JSON syntax, files over 5 MB |
+| ruff (`pixi run lint`), ty (`pixi run typecheck`) | Lint (`E F I UP B SIM RUF`) and types on `src/` |
+| `.pre-commit-config.yaml` (`pixi run precommit`) | ruff, ruff-format, whitespace, YAML / JSON syntax, files over 5 MB |
 | `notebooks.yml` | `notebooks/*.py` parse; warns on committed `.ipynb` |
 | `dvc-check.yml` | `dvc status` and `dvc dag` run on PRs touching the pipeline |
 | `experiment-report.yml` | A PR comment with `dvc metrics diff`, `dvc params diff`, `dvc status` |
@@ -158,54 +157,47 @@ Step-by-step recipes for the common jobs live as plain Markdown in `.claude/skil
 | Verify before a PR | `pre-pr-check` |
 | Review a change | `myproject-review` (+ the read-only `.claude/agents/reuse-reviewer.md` and `reproducibility-reviewer.md`) |
 | Write a squash commit message | `squash-commit` |
-| Open or link GitHub issues | `create-gh-issue`, `link-gh-issues` (templates in `.github/ISSUE_TEMPLATE/`; `uv run poe gh-labels`, `gh-sub`, `gh-block`, `gh-show`) |
+| Open or link GitHub issues | `create-gh-issue`, `link-gh-issues` (templates in `.github/ISSUE_TEMPLATE/`; `pixi run gh-labels`, `gh-sub`, `gh-block`, `gh-show`) |
 
 A research project is not a library other projects build on, so the template ships no downstream plugin or `llms.txt`; the skills above are for work inside the project.
 
 ## Working in the repo
 
-Two environment managers share the repo. uv (via the poe tasks in `pyproject.toml`) is the local developer loop; pixi is what CI and the experiments run in.
-
-```bash
-uv run poe                  # every task (they live in [tool.poe.tasks] in pyproject.toml)
-uv run poe install          # uv sync --all-groups + pre-commit hooks
-uv run poe test             # uv run pytest -v -o addopts=   (no coverage)
-uv run poe test-cov         # pytest with the coverage report (pyproject addopts)
-uv run poe lint             # ruff check .   (entire repo)
-uv run poe format           # ruff format . && ruff check --fix .
-uv run poe typecheck        # ty check src/myproject
-uv run poe check            # lint + format-check + typecheck + test-cov
-uv run poe precommit        # pre-commit on every file
-uv run poe capabilities     # regenerate docs/api/capabilities.md
-uv run poe docs             # myst build --html  (into _build/html)
-uv run poe docs-serve       # myst start (live preview)
-```
-
-Extra arguments after a task name are passed to its command (`uv run poe test tests/test_models.py -k baseline`).
+pixi is the one environment manager and task runner. Its manifest is the `[tool.pixi.*]` tables in `pyproject.toml`, and `pixi.lock` is the lockfile of record.
 
 ```bash
 pixi install                          # the default environment (-e <env> for another)
+pixi run install-hooks                # pre-commit hooks, once per clone
+pixi task list                        # every task with its description
 pixi run test                         # pytest -v with coverage (what CI runs)
-pixi run lint                         # ruff check .      (what CI runs)
-pixi run typecheck                    # ty check src/     (what CI runs)
+pixi run test-fast                    # pytest -v -o addopts=   (no coverage)
+pixi run lint                         # ruff check .   (entire repo; what CI runs)
+pixi run format                       # ruff format . && ruff check --fix .
+pixi run format-check                 # ruff format --check .
+pixi run typecheck                    # ty check src/  (what CI runs)
+pixi run check                        # lint + format-check + typecheck + test
+pixi run precommit                    # pre-commit on every file
+pixi run capabilities                 # regenerate docs/api/capabilities.md
 pixi run preprocess                   # also: train, train-zen, evaluate
 pixi run train training.lr=0.01 model=baseline   # Hydra overrides
 pixi run dvc repro                    # the whole pipeline (dvc repro <stage>: one stage + upstream)
 pixi run dvc status                   # what changed since dvc.lock
 pixi run dvc dag                      # the stage graph
 pixi run dvc add data/raw/<file>      # track a raw file (commit the .dvc pointer)
-pixi run dvc push                     # upload data (dvc pull downloads); needs a
-                                      # remote: dvc remote add -d <name> <url>
+pixi run dvc push                     # upload data (dvc pull downloads); needs a remote
 pixi run dvc metrics diff             # compare metrics with the last commit
 pixi run notebooks-to-ipynb           # notebooks/*.py → .ipynb (local only)
-pixi run -e docs docs-build           # what pages.yml runs
+pixi run -e docs docs-build           # myst build --html into _build/html (what pages.yml runs)
+pixi run -e docs docs-serve           # myst start (live preview)
 pixi run -e jupyterlab lab
 pixi run -e marimo marimo-edit
 ```
 
-`pixi.toml` pins `python` below 3.14: Hydra 1.3 does not run on Python 3.14 (`ValueError: badly formed help string` from argparse). Lift the pin (and re-lock) only once the Hydra release in `pixi.lock` supports it.
+Extra arguments after a task name go to its command (`pixi run test-fast tests/test_models.py -k baseline`); the GitHub tasks take positional arguments (`pixi run gh-sub 7 "42 43 44"`, `pixi run gh-block 44 43`).
 
-Run one test with `uv run pytest tests/test_models.py::test_baseline_model_init -v -o addopts=`.
+`[tool.pixi.dependencies]` pins `python` below 3.14: Hydra 1.3 does not run on Python 3.14 (`ValueError: badly formed help string` from argparse). Lift the pin (and re-lock) only once the Hydra release in `pixi.lock` supports it.
+
+Run one test with `pixi run pytest tests/test_models.py::test_baseline_model_init -v -o addopts=`.
 
 ### Test tiers
 
@@ -223,14 +215,11 @@ Run one test with `uv run pytest tests/test_models.py::test_baseline_model_init 
 
 All of these must pass, from the repo root:
 
-1. `uv run poe test` (or `pixi run test`): zero failures.
-2. `uv run --group lint ruff check .`: the **entire** repo, including `tests/` and `scripts/` (notebooks are excluded by the ruff config).
-3. `uv run --group lint ruff format --check .`
-4. `uv run poe typecheck` (or `pixi run typecheck`).
-5. After changing a public name in the package: `uv run poe capabilities`.
-6. After changing `dvc.yaml`, a stage's script or its configs: `pixi run dvc status` and `pixi run dvc dag`, and `pixi run dvc repro` for the stages you touched (commit `dvc.lock`).
-7. After changing a dependency: `pixi lock` and commit `pixi.lock`.
-8. After changing `docs/`, `myst.yml` or `references.bib`: `uv run poe docs`.
+1. `pixi run check`: lint (the **entire** repo, including `tests/` and `scripts/`; notebooks are excluded by the ruff config), format check, types and the tests, with zero failures. `pixi run test-fast` is the quick loop while you work.
+2. After changing a public name in the package: `pixi run capabilities`.
+3. After changing `dvc.yaml`, a stage's script or its configs: `pixi run dvc status` and `pixi run dvc dag`, and `pixi run dvc repro` for the stages you touched (commit `dvc.lock`).
+4. After changing a dependency: `pixi lock` and commit `pixi.lock`.
+5. After changing `docs/`, `myst.yml` or `references.bib`: `pixi run -e docs docs-build`.
 
 ## Coding principles
 
@@ -259,7 +248,7 @@ These are the `karpathy-coding-principles` skill in four lines.
 
 Its JAX/Equinox rules apply when the project uses JAX: logic under `src/<package>/_src/` with public modules that only re-export, jaxtyping with the shared dim vocabulary, einx instead of `axis=` / `.T` / `reshape` / `[:, None]`, lineax for solves, arrays in `eqx.Module`s with `__check_init__` and `eqx.error_if`, `key` keyword-only and last, no silent dtype casts, and the four tests per public forward function (closed-form oracle, hypothesis properties, gradient check, transform invariance).
 
-**CLIs and scripts** use `cyclopts` for arguments and `loguru` for output; never argparse, click, typer, progress `print`s or stdlib `logging`. Hydra entry points (`scripts/train.py`, `train_zen.py`) keep Hydra's own command line. `scripts/capabilities.py` and `scripts/convert_notebooks.py` still use `argparse`; move them over when you next change them, adding `cyclopts` and `loguru` to the `dev` group (and to `pixi.toml` for anything that runs there).
+**CLIs and scripts** use `cyclopts` for arguments and `loguru` for output; never argparse, click, typer, progress `print`s or stdlib `logging`. Hydra entry points (`scripts/train.py`, `train_zen.py`) keep Hydra's own command line. `scripts/capabilities.py` and `scripts/convert_notebooks.py` still use `argparse`; move them over when you next change them, adding `cyclopts` and `loguru` to `[tool.pixi.feature.dev.dependencies]` (or to `[tool.pixi.dependencies]` if a pipeline stage needs them).
 
 ### Maths notation
 
@@ -268,7 +257,7 @@ Maths follows `eman-style-math` in every format: the letter says what kind of ob
 - **Code, comments and docstrings:** Unicode only (x̄, σ², Σ⁻¹, ∑, 𝔼, ⊙), never `$…$`; identifiers stay ASCII.
 - **MyST pages and notebook markdown:** `$…$` and `$$…$$` with the kind-named macros (`\vect{x}`, `\gvect{\mu}`, `\mat{K}`, `\gmat{\Sigma}`), installed in the `math:` block of `myst.yml`; regenerate it with the skill's `scripts/emit_macros.py myst` when the macros change.
 - **GitHub issues and PRs:** expand the macros first (`scripts/expand_macros.py`), display maths in a `math` fence.
-- **Everywhere:** each `$…$` expression on one source line; no spacing or sizing macros (`\,`, `\;`, `\quad`, `\qquad`, `\big`, `\tfrac`, `\boxed`, `\cdots`, `\operatorname`). Check a page with `uv run --with cyclopts --with loguru --with pyyaml python ~/.claude/skills/eman-style-math/scripts/check_math.py <file> --target myst` (the skill's scripts need those three packages, which this repo does not install).
+- **Everywhere:** each `$…$` expression on one source line; no spacing or sizing macros (`\,`, `\;`, `\quad`, `\qquad`, `\big`, `\tfrac`, `\boxed`, `\cdots`, `\operatorname`). Check a page with `pixi exec --spec python --spec cyclopts --spec loguru --spec pyyaml python ~/.claude/skills/eman-style-math/scripts/check_math.py <file> --target myst` (the skill's scripts need those three packages, which the project environments do not install).
 
 ### Prose and diagrams
 
@@ -303,7 +292,7 @@ The maintainer's skills live in [jejagents](https://github.com/jejjohnson/jejage
 - Write one `Closes #N` line per issue.
 - Releases are cut by release-please (`release-please-config.json`: one Python package at `.`, tags `<package-name>-vX.Y.Z`, the version bumped in `pyproject.toml`); don't bump versions by hand. A release is a natural point to archive results (Zenodo DOI, `CITATION.cff`).
 - **Never replace or remove an existing PR title or description.** An agent called for a small follow-up tends to write a fresh description scoped to its own work and silently discard the rest: read the existing description first, treat it as the base, and only append checklist items or update their status.
-- Code review follows [`CODE_REVIEW.md`](CODE_REVIEW.md); issues follow the label taxonomy and epic model in [`CONTRIBUTING.md`](CONTRIBUTING.md) (`uv run poe gh-labels`, `gh-sub`, `gh-block`, `gh-show`).
+- Code review follows [`CODE_REVIEW.md`](CODE_REVIEW.md); issues follow the label taxonomy and epic model in [`CONTRIBUTING.md`](CONTRIBUTING.md) (`pixi run gh-labels`, `gh-sub`, `gh-block`, `gh-show`).
 
 ### Pull Request Review Comments
 
@@ -332,13 +321,13 @@ GraphQL is blocked in Claude sessions; there, and whenever the `gh` CLI is unava
 
 ## Documentation
 
-MyST Markdown built by the `mystmd` CLI from `myst.yml` at the repo root (book theme); `pages.yml` builds it (`pixi run -e docs docs-build`) and deploys `_build/html` to GitHub Pages on every push to `main`. No workflow builds the docs on a pull request, so run `uv run poe docs` yourself.
+MyST Markdown built by the `mystmd` CLI from `myst.yml` at the repo root (book theme); `pages.yml` builds it (`pixi run -e docs docs-build`) and deploys `_build/html` to GitHub Pages on every push to `main`. No workflow builds the docs on a pull request, so run `pixi run -e docs docs-build` yourself.
 
 - **Pages** live under `docs/` (`notes/` for background and methods, `tutorials/`, `api/`), each listed in the `toc` of `myst.yml`; a page that is not in the toc is not built into the site.
 - **Citations**: add the BibTeX entry to `references.bib` and cite it with `[@key]` (or `{cite:t}` / `{cite:p}`).
 - **Figures** from notebooks go to `docs/images/<notebook_name>/`, committed together with the notebook that makes them.
 - **Notebooks** are not rendered into the site; the docs show their saved figures.
-- **API pages**: `docs/api/capabilities.md` is generated (`uv run poe capabilities`); `docs/api/reference.md` is hand-written.
+- **API pages**: `docs/api/capabilities.md` is generated (`pixi run capabilities`); `docs/api/reference.md` is hand-written.
 
 ## Plans
 

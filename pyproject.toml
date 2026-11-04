@@ -14,28 +14,6 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/myproject"]
 
-[dependency-groups]
-dev = [
-    "pytest>=8.0",
-    "pytest-cov>=5.0",
-    "pytest-xdist>=3.5",
-    "pre-commit>=3.7",
-    "poethepoet>=0.49.0",
-]
-lint = [
-    "ruff>=0.9",
-]
-typecheck = [
-    "ty>=0.0.1a6",
-]
-docs = [
-    "mystmd>=1.3",
-    "jupytext>=1.16",
-    "ipykernel>=6.29",
-    "matplotlib>=3.9",
-    "ghp-import>=2.1",
-]
-
 [tool.ruff]
 target-version = "py312"
 line-length = 88
@@ -81,172 +59,121 @@ omit = ["tests/*"]
 [tool.coverage.report]
 show_missing = true
 
+
 # ---------------------------------------------------------------------------
-# Task runner (Poe the Poet) for the uv developer loop — replaces the old
-# Makefile. Experiments, DVC and CI run through the pixi tasks in pixi.toml.
-#   uv run poe            # list every task with its help text
-#   uv run poe install    # first run: `uv run` syncs the dev group, so poe exists
-# Extra arguments are passed through to the underlying command, e.g.
-#   uv run poe test tests/test_models.py -k baseline
+# pixi: the one environment manager and task runner (was pixi.toml + Makefile).
+#   pixi install                 # the default environment (dev tools)
+#   pixi task list               # every task with its description
+#   pixi run <task>              # e.g. pixi run check; -e docs for the docs tasks
+# pixi.lock is the lockfile of record: `pixi lock` after changing anything here.
 # ---------------------------------------------------------------------------
-[tool.poe]
-# Tasks call `uv run --group …` themselves, so poe must not wrap them in a
-# second `uv run`.
-executor = { type = "simple" }
-# Load .env when present (see .env.example); a missing file is fine.
-envfile = { optional = ".env" }
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-arm64"]
 
-[tool.poe.env]
-# Overridable from .env or the shell.
-PKGROOT.default = "src/myproject"
+[tool.pixi.dependencies]
+# Hydra 1.3 does not run on Python 3.14 (argparse rejects its help strings).
+python = ">=3.12,<3.14"
+numpy = "*"
+scipy = "*"
+xarray = "*"
+netcdf4 = "*"
+matplotlib = "*"
+dvc = ">=3"
+hydra-core = ">=1.3"
 
-# --- Meta -------------------------------------------------------------------
+[tool.pixi.pypi-dependencies]
+my-research-project = { path = ".", editable = true }
+hydra-zen = ">=0.13"
+omegaconf = ">=2.3"
 
-[tool.poe.tasks.version]
-help = "Display package version and git hash"
-verbosity = -1  # don't echo the inline script
-interpreter = "python"
-shell = """
-import subprocess, tomllib
-with open("pyproject.toml", "rb") as f:
-    version = tomllib.load(f)["project"]["version"]
-git = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True)
-print(f"Package : {version}")
-print(f"Git hash: {git.stdout.strip() or 'unknown'}")
-"""
+[tool.pixi.feature.dev.dependencies]
+pytest = ">=8"
+pytest-cov = ">=5"
+pre-commit = ">=3.7"
+ruff = ">=0.9"
+jupytext = ">=1.16"
 
-# --- Setup ------------------------------------------------------------------
+[tool.pixi.feature.dev.pypi-dependencies]
+ty = ">=0.0.1a6"
 
-[tool.poe.tasks.install]
-help = "Install all dependency groups via uv + pre-commit hooks"
-sequence = [
-    { cmd = "uv sync --all-groups" },
-    { cmd = "uv run pre-commit install" },
-]
+[tool.pixi.feature.docs.dependencies]
+nodejs = ">=18"
 
-[tool.poe.tasks.init]
-help = "Bootstrap .env from .env.example (skip if .env already exists)"
-verbosity = -1  # don't echo the inline script
-interpreter = "python"
-shell = """
-import pathlib, shutil
-if pathlib.Path(".env").exists():
-    print(".env already exists — skipping.")
-else:
-    shutil.copy(".env.example", ".env")
-    print(".env created from .env.example")
-"""
+[tool.pixi.feature.docs.pypi-dependencies]
+mystmd = "*"
 
-# --- Quality ----------------------------------------------------------------
+[tool.pixi.feature.jupyterlab.dependencies]
+jupyterlab = ">=4"
+ipykernel = ">=6.29"
+jupyterlab-git = "*"
+jupyterlab-lsp = "*"
+jupyter-lsp = "*"
+python-lsp-server = "*"
+jupyterlab-myst = "*"
+ipywidgets = ">=8"
+nbdime = "*"
 
-[tool.poe.tasks.lint]
-help = "Lint with ruff (no auto-fix) — entire repo"
-cmd = "uv run --group lint ruff check ."
+[tool.pixi.feature.jupyterlab.pypi-dependencies]
+jupyterlab-code-formatter = "*"
+jupyterlab-spellchecker = "*"
 
-[tool.poe.tasks.format]
-help = "Format with ruff (format + auto-fix) — entire repo"
-sequence = [
-    { cmd = "uv run --group lint ruff format ." },
-    { cmd = "uv run --group lint ruff check --fix ." },
-]
+[tool.pixi.feature.marimo.dependencies]
+marimo = "*"
+duckdb = ">=1"
+altair = ">=5"
+polars = ">=1"
+pyarrow = "*"
+anywidget = "*"
 
-[tool.poe.tasks.format-check]
-help = "Check formatting without changing files"
-cmd = "uv run --group lint ruff format --check ."
+[tool.pixi.feature.marimo.pypi-dependencies]
+vegafusion = { version = ">=2", extras = ["embed"] }
+plotly = ">=5"
 
-[tool.poe.tasks.typecheck]
-help = "Type-check $PKGROOT with ty"
-cmd = "uv run --group typecheck ty check ${PKGROOT}"
+[tool.pixi.environments]
+default = { features = ["dev"], solve-group = "default" }
+docs = { features = ["docs"], solve-group = "default" }
+jupyterlab = { features = ["dev", "jupyterlab"], solve-group = "default" }
+marimo = { features = ["dev", "marimo"], solve-group = "default" }
 
-# --- Testing ----------------------------------------------------------------
+# --- Developer loop ----------------------------------------------------------
 
-[tool.poe.tasks.test]
-help = "Run tests (no coverage, fast)"
-cmd = "uv run pytest -v -o addopts="
+[tool.pixi.tasks]
+install-hooks = { cmd = "pre-commit install", description = "Install the git pre-commit hooks" }
+init = { cmd = "python -c \"import pathlib, shutil; p = pathlib.Path('.env'); print('.env already exists, skipping') if p.exists() else (shutil.copy('.env.example', p), print('.env created from .env.example'))\"", description = "Bootstrap .env from .env.example (skip if .env already exists)" }
+test = { cmd = "pytest -v", description = "Run the tests with the coverage report (what CI runs)" }
+test-fast = { cmd = "pytest -v -o addopts=", description = "Run the tests without coverage" }
+lint = { cmd = "ruff check .", description = "Lint with ruff, entire repo (what CI runs)" }
+format = { cmd = "ruff format . && ruff check --fix .", description = "Format with ruff and apply auto-fixes" }
+format-check = { cmd = "ruff format --check .", description = "Check formatting without changing files" }
+typecheck = { cmd = "ty check src/", description = "Type-check the package with ty (what CI runs)" }
+check = { depends-on = ["lint", "format-check", "typecheck", "test"], description = "lint, format-check, typecheck and test in one go" }
+precommit = { cmd = "pre-commit run --all-files", description = "Run every pre-commit hook on every file" }
+capabilities = { cmd = "python scripts/capabilities.py", description = "Regenerate docs/api/capabilities.md (every public name, for reuse)" }
+notebooks-to-ipynb = { cmd = "python scripts/convert_notebooks.py --verbose", description = "Convert notebooks/*.py to .ipynb (local only, never committed)" }
 
-[tool.poe.tasks.test-cov]
-help = "Run tests with the coverage report (pyproject addopts)"
-cmd = "uv run pytest -v"
+# --- Experiments --------------------------------------------------------------
 
-[tool.poe.tasks.check]
-help = "lint, format-check, typecheck and test-cov in one go"
-sequence = ["lint", "format-check", "typecheck", "test-cov"]
+preprocess = { cmd = "python scripts/preprocess.py", description = "Run the preprocess entry point (Hydra overrides allowed)" }
+train = { cmd = "python scripts/train.py", description = "Train with Hydra configs (e.g. pixi run train model=transformer)" }
+train-zen = { cmd = "python scripts/train_zen.py", description = "Train with the hydra-zen configs" }
+evaluate = { cmd = "python scripts/evaluate.py", description = "Evaluate the trained model" }
 
-# --- Pre-commit -------------------------------------------------------------
+# --- GitHub housekeeping ------------------------------------------------------
 
-[tool.poe.tasks.precommit]
-help = "Run pre-commit hooks on all files"
-cmd = "uv run pre-commit run --all-files"
+gh-labels = { cmd = "bash .github/scripts/create-labels.sh", description = "Bootstrap the GitHub label taxonomy (idempotent)" }
+gh-sub = { cmd = "bash .github/scripts/link-issues.sh sub {{ parent }} {{ children }}", args = ["parent", "children"], description = "Link children as sub-issues of a parent: pixi run gh-sub 7 \"42 43 44\"" }
+gh-block = { cmd = "bash .github/scripts/link-issues.sh block {{ issue }} {{ blocked_by }}", args = ["issue", "blocked_by"], description = "Mark an issue as blocked by another: pixi run gh-block 44 43" }
+gh-show = { cmd = "bash .github/scripts/link-issues.sh show {{ issue }}", args = ["issue"], description = "Show parent / sub-issues / blocking / blocked-by for an issue" }
 
-# --- Build ------------------------------------------------------------------
+# --- Docs and notebooks environments -------------------------------------------
 
-[tool.poe.tasks.build]
-help = "Build wheel and sdist into dist/"
-cmd = "uv build"
+[tool.pixi.feature.docs.tasks]
+docs-build = { cmd = "myst build --html", description = "Build the docs into _build/html (what pages.yml runs)" }
+docs-serve = { cmd = "myst start", description = "Serve the docs with live preview" }
 
-[tool.poe.tasks.clean]
-help = "Remove build artefacts and cache directories"
-verbosity = -1  # don't echo the inline script
-interpreter = "python"
-shell = """
-import pathlib, shutil
-root = pathlib.Path(".")
-targets = [
-    "dist", "build", ".eggs", ".pytest_cache", ".ruff_cache", ".mypy_cache",
-    ".coverage", "coverage.xml",
-]
-paths = [root / t for t in targets] + list(root.glob("*.egg-info"))
-skip = {".venv", ".pixi"}
-paths += [p for p in root.rglob("__pycache__") if not skip & set(p.parts)]
-for p in paths:
-    if p.is_dir():
-        shutil.rmtree(p, ignore_errors=True)
-    elif p.exists():
-        p.unlink()
-print("Clean complete.")
-"""
+[tool.pixi.feature.jupyterlab.tasks]
+lab = { cmd = "jupyter lab", description = "Start JupyterLab" }
 
-# --- Docs -------------------------------------------------------------------
-
-[tool.poe.tasks.docs]
-help = "Build the documentation with MyST into _build/html"
-cmd = "uv run --group docs myst build --html"
-
-[tool.poe.tasks.docs-serve]
-help = "Serve the documentation locally (myst start)"
-cmd = "uv run --group docs myst start"
-
-[tool.poe.tasks.docs-deploy]
-help = "Build the docs and push _build/html to GitHub Pages"
-sequence = ["docs", { cmd = "uv run --group docs ghp-import -n -p _build/html" }]
-
-[tool.poe.tasks.capabilities]
-help = "Regenerate docs/api/capabilities.md (every public name, for reuse)"
-cmd = "uv run python scripts/capabilities.py"
-
-# --- GitHub housekeeping ----------------------------------------------------
-
-[tool.poe.tasks.gh-labels]
-help = "Bootstrap the GitHub label taxonomy (idempotent)"
-cmd = "bash .github/scripts/create-labels.sh"
-
-[tool.poe.tasks.gh-sub]
-help = "Link CHILDREN as sub-issues of PARENT (e.g. poe gh-sub 7 42 43 44)"
-cmd = "bash .github/scripts/link-issues.sh sub ${parent} ${children}"
-args = [
-    { name = "parent", positional = true, required = true, help = "Parent issue number" },
-    { name = "children", positional = true, multiple = true, required = true, help = "Child issue numbers" },
-]
-
-[tool.poe.tasks.gh-block]
-help = "Mark ISSUE as blocked by BLOCKED_BY (e.g. poe gh-block 44 43)"
-cmd = "bash .github/scripts/link-issues.sh block ${issue} ${blocked_by}"
-args = [
-    { name = "issue", positional = true, required = true, help = "The blocked issue" },
-    { name = "blocked_by", positional = true, required = true, help = "The blocking issue" },
-]
-
-[tool.poe.tasks.gh-show]
-help = "Show parent / sub-issues / blocking / blocked-by for ISSUE"
-cmd = "bash .github/scripts/link-issues.sh show ${issue}"
-args = [{ name = "issue", positional = true, required = true, help = "Issue number" }]
+[tool.pixi.feature.marimo.tasks]
+marimo-edit = { cmd = "marimo edit", description = "Open marimo" }

@@ -5,7 +5,7 @@ This template uses a lightweight GitHub project scaffold so issues, PRs, and rel
 ## Development Setup
 
 ```bash
-uv run poe install
+pixi install && pixi run install-hooks
 ```
 
 Alternative full environment with pixi:
@@ -19,18 +19,18 @@ pixi install
 Before opening a PR, run the full local checks from the repo root:
 
 ```bash
-uv run pytest -v
-uv run --group lint ruff check .
-uv run --group lint ruff format --check .
-uv run --group typecheck ty check src/myproject
+pixi run pytest -v
+pixi run lint
+pixi run format-check
+pixi run ty check src/myproject
 ```
 
 Equivalent Make targets:
 
 ```bash
-uv run poe test-cov
-uv run poe lint
-uv run poe typecheck
+pixi run test
+pixi run lint
+pixi run typecheck
 ```
 
 ## Label Taxonomy
@@ -45,7 +45,7 @@ This template uses a small label taxonomy for issue planning and PR routing.
 Bootstrap the standard label set with:
 
 ```bash
-uv run poe gh-labels
+pixi run gh-labels
 ```
 
 ## Epic Model
@@ -70,9 +70,9 @@ Record relationships in the issue body and also apply the matching native GitHub
 Helper commands:
 
 ```bash
-uv run poe gh-sub <parent#> <child1#> <child2#>
-uv run poe gh-block <issue#> <other#>
-uv run poe gh-show <issue#>
+pixi run gh-sub <parent#> "<child1#> <child2#>"
+pixi run gh-block <issue#> <other#>
+pixi run gh-show <issue#>
 ```
 
 The underlying helper is [.github/scripts/link-issues.sh](.github/scripts/link-issues.sh).
@@ -85,7 +85,7 @@ labels, drafting the body, and applying the native links.
 
 - Documentation source lives in [docs](docs/)
 - Notebooks live in [notebooks](notebooks/) (Jupytext `.py`) and [marimo_notebooks](marimo_notebooks/)
-- Docs build locally with `uv run poe docs-serve` (or `pixi run -e docs docs-serve`)
+- Docs build locally with `pixi run -e docs docs-serve` (or `pixi run -e docs docs-serve`)
 - If a notebook produces figures for docs, save committed artifacts under `docs/images/<notebook_name>/`
 
 ## Commit And PR Conventions
