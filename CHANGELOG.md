@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.0](https://github.com/jejjohnson/research_template/compare/my-research-project-v0.1.2...my-research-project-v0.2.0) (2026-11-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* pixi.toml and the poe tasks are gone; use `pixi run <task>` (the tasks live in [tool.pixi.tasks] in pyproject.toml).
+* the Makefile is gone; use `uv run poe <task>`.
+
+### Build System
+
+* make pixi the only environment manager, configured in pyproject.toml ([#18](https://github.com/jejjohnson/research_template/issues/18)) ([d81d38b](https://github.com/jejjohnson/research_template/commit/d81d38b92f49f6a81560252324e8c72273379b75))
+* replace the Makefile with poe tasks and adopt the jejagents house style ([4e4b0a6](https://github.com/jejjohnson/research_template/commit/4e4b0a6fdcca144f76ab05f7b2604963d356548c))
+
 ## [0.1.2](https://github.com/jejjohnson/research_template/compare/my-research-project-v0.1.1...my-research-project-v0.1.2) (2026-10-12)
 
 
