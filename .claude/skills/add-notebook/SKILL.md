@@ -5,8 +5,7 @@ description: Add or update a notebook in the research project — a jupytext per
 
 # Add a notebook
 
-Read contract 5 ("Notebooks") in `AGENTS.md` first. Two kinds, both plain
-`.py` files; `.ipynb` files are never committed (`*.ipynb` is gitignored).
+Read contract 5 ("Notebooks") in `AGENTS.md` first. Two kinds, both plain `.py` files; `.ipynb` files are never committed (`*.ipynb` is gitignored).
 
 | Kind | Where | For | Edit with |
 |---|---|---|---|
@@ -15,10 +14,7 @@ Read contract 5 ("Notebooks") in `AGENTS.md` first. Two kinds, both plain
 
 ## 1. Make sure it does not exist yet
 
-`ls notebooks marimo_notebooks`: extend `01_eda.py` / `02_results.py` (or
-`01_exploration.py`) when the analysis belongs there. Reusable code a
-notebook needs goes in the package (`docs/api/capabilities.md`), not in a
-cell.
+`ls notebooks marimo_notebooks`: extend `01_eda.py` / `02_results.py` (or `01_exploration.py`) when the analysis belongs there. Reusable code a notebook needs goes in the package (`docs/api/capabilities.md`), not in a cell.
 
 ## 2. A jupytext notebook
 
@@ -59,12 +55,9 @@ seed_everything(42)
 rng = np.random.default_rng(42)
 ```
 
-- Cells are `# %%` (code) and `# %% [markdown]` (text, every line starting
-  with `# `).
-- Import from the package; read pipeline outputs (`results/metrics/*.json`,
-  `results/figures/*.csv`, `data/processed/`) by paths relative to the repo
-  root — run the notebook from there. Read the keys the producing script
-  actually writes (open the JSON once rather than assuming its layout).
+- Cells are `# %%` (code) and `# %% [markdown]` (text, every line starting with `# `).
+- Code cells follow `python-style` (import from the package, comments above the line, the Unicode equation above each mathematical line); maths in markdown cells follows `eman-style-math` (the macros in `myst.yml`, every symbol defined with its shape, one expression per source line); prose follows `eman-prose-tech`.
+- Import from the package; read pipeline outputs (`results/metrics/*.json`, `results/figures/*.csv`, `data/processed/`) by paths relative to the repo root — run the notebook from there. Read the keys the producing script actually writes (open the JSON once rather than assuming its layout).
 - Seed every random draw (`np.random.default_rng(seed)`).
 - A figure the docs use is saved, then shown:
 
@@ -75,24 +68,15 @@ rng = np.random.default_rng(42)
   plt.show()
   ```
 
-  and committed together with the notebook (the docs do not render
-  notebooks; they show the saved figures).
+  and committed together with the notebook (the docs do not render notebooks; they show the saved figures).
 
 ## 3. A marimo notebook
 
-Copy `marimo_notebooks/01_exploration.py`: a PEP 723 header listing what
-the app imports (so `uv run <file>` can run it on its own), then
-`app = marimo.App(...)` and one `@app.cell` function per cell, each
-returning the names later cells use. Edit it in the browser
-(`pixi run -e marimo marimo edit marimo_notebooks/<file>.py`), which keeps
-the file valid; marimo's `__marimo__/` session cache next to it is not
-committed.
+Copy `marimo_notebooks/01_exploration.py`: a PEP 723 header listing what the app imports (so `uv run <file>` can run it on its own), then `app = marimo.App(...)` and one `@app.cell` function per cell, each returning the names later cells use. Edit it in the browser (`pixi run -e marimo marimo edit marimo_notebooks/<file>.py`), which keeps the file valid; marimo's `__marimo__/` session cache next to it is not committed.
 
 ## 4. Lint and parse
 
-ruff skips `notebooks/` and `marimo_notebooks/` (`exclude` in
-`pyproject.toml`); CI (`notebooks.yml`) only checks that
-`notebooks/*.py` parse, so run them yourself.
+ruff skips `notebooks/` and `marimo_notebooks/` (`exclude` in `pyproject.toml`); CI (`notebooks.yml`) only checks that `notebooks/*.py` parse, so run them yourself.
 
 ## 5. Verify
 
@@ -107,5 +91,4 @@ pixi run -e marimo marimo check marimo_notebooks/<file>.py
 MPLBACKEND=Agg pixi run -e marimo python marimo_notebooks/<file>.py
 ```
 
-Delete the generated `.ipynb` / `__marimo__/` before committing if `git
-status` shows them, and commit any figures under `docs/images/`.
+Delete the generated `.ipynb` / `__marimo__/` before committing if `git status` shows them, and commit any figures under `docs/images/`.

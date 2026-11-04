@@ -20,6 +20,7 @@ dev = [
     "pytest-cov>=5.0",
     "pytest-xdist>=3.5",
     "pre-commit>=3.7",
+    "poethepoet>=0.49.0",
 ]
 lint = [
     "ruff>=0.9",
@@ -43,6 +44,9 @@ exclude = ["notebooks/", "marimo_notebooks/"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 ignore = ["E402", "E721", "E731", "E741", "F722"]
+# Docstrings and comments carry Unicode maths (eman-style-math, "Maths
+# notation" in AGENTS.md), so the maths glyphs that look like ASCII are allowed.
+allowed-confusables = ["−", "×", "∗", "∣", "α", "γ", "ι", "ν", "ο", "ρ", "σ", "υ"]
 
 [tool.ruff.lint.per-file-ignores]
 "notebooks/**/*.py" = ["E501", "I001", "B018"]
@@ -76,3 +80,173 @@ omit = ["tests/*"]
 
 [tool.coverage.report]
 show_missing = true
+
+# ---------------------------------------------------------------------------
+# Task runner (Poe the Poet) for the uv developer loop — replaces the old
+# Makefile. Experiments, DVC and CI run through the pixi tasks in pixi.toml.
+#   uv run poe            # list every task with its help text
+#   uv run poe install    # first run: `uv run` syncs the dev group, so poe exists
+# Extra arguments are passed through to the underlying command, e.g.
+#   uv run poe test tests/test_models.py -k baseline
+# ---------------------------------------------------------------------------
+[tool.poe]
+# Tasks call `uv run --group …` themselves, so poe must not wrap them in a
+# second `uv run`.
+executor = { type = "simple" }
+# Load .env when present (see .env.example); a missing file is fine.
+envfile = { optional = ".env" }
+
+[tool.poe.env]
+# Overridable from .env or the shell.
+PKGROOT.default = "src/myproject"
+
+# --- Meta -------------------------------------------------------------------
+
+[tool.poe.tasks.version]
+help = "Display package version and git hash"
+verbosity = -1  # don't echo the inline script
+interpreter = "python"
+shell = """
+import subprocess, tomllib
+with open("pyproject.toml", "rb") as f:
+    version = tomllib.load(f)["project"]["version"]
+git = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True)
+print(f"Package : {version}")
+print(f"Git hash: {git.stdout.strip() or 'unknown'}")
+"""
+
+# --- Setup ------------------------------------------------------------------
+
+[tool.poe.tasks.install]
+help = "Install all dependency groups via uv + pre-commit hooks"
+sequence = [
+    { cmd = "uv sync --all-groups" },
+    { cmd = "uv run pre-commit install" },
+]
+
+[tool.poe.tasks.init]
+help = "Bootstrap .env from .env.example (skip if .env already exists)"
+verbosity = -1  # don't echo the inline script
+interpreter = "python"
+shell = """
+import pathlib, shutil
+if pathlib.Path(".env").exists():
+    print(".env already exists — skipping.")
+else:
+    shutil.copy(".env.example", ".env")
+    print(".env created from .env.example")
+"""
+
+# --- Quality ----------------------------------------------------------------
+
+[tool.poe.tasks.lint]
+help = "Lint with ruff (no auto-fix) — entire repo"
+cmd = "uv run --group lint ruff check ."
+
+[tool.poe.tasks.format]
+help = "Format with ruff (format + auto-fix) — entire repo"
+sequence = [
+    { cmd = "uv run --group lint ruff format ." },
+    { cmd = "uv run --group lint ruff check --fix ." },
+]
+
+[tool.poe.tasks.format-check]
+help = "Check formatting without changing files"
+cmd = "uv run --group lint ruff format --check ."
+
+[tool.poe.tasks.typecheck]
+help = "Type-check $PKGROOT with ty"
+cmd = "uv run --group typecheck ty check ${PKGROOT}"
+
+# --- Testing ----------------------------------------------------------------
+
+[tool.poe.tasks.test]
+help = "Run tests (no coverage, fast)"
+cmd = "uv run pytest -v -o addopts="
+
+[tool.poe.tasks.test-cov]
+help = "Run tests with the coverage report (pyproject addopts)"
+cmd = "uv run pytest -v"
+
+[tool.poe.tasks.check]
+help = "lint, format-check, typecheck and test-cov in one go"
+sequence = ["lint", "format-check", "typecheck", "test-cov"]
+
+# --- Pre-commit -------------------------------------------------------------
+
+[tool.poe.tasks.precommit]
+help = "Run pre-commit hooks on all files"
+cmd = "uv run pre-commit run --all-files"
+
+# --- Build ------------------------------------------------------------------
+
+[tool.poe.tasks.build]
+help = "Build wheel and sdist into dist/"
+cmd = "uv build"
+
+[tool.poe.tasks.clean]
+help = "Remove build artefacts and cache directories"
+verbosity = -1  # don't echo the inline script
+interpreter = "python"
+shell = """
+import pathlib, shutil
+root = pathlib.Path(".")
+targets = [
+    "dist", "build", ".eggs", ".pytest_cache", ".ruff_cache", ".mypy_cache",
+    ".coverage", "coverage.xml",
+]
+paths = [root / t for t in targets] + list(root.glob("*.egg-info"))
+skip = {".venv", ".pixi"}
+paths += [p for p in root.rglob("__pycache__") if not skip & set(p.parts)]
+for p in paths:
+    if p.is_dir():
+        shutil.rmtree(p, ignore_errors=True)
+    elif p.exists():
+        p.unlink()
+print("Clean complete.")
+"""
+
+# --- Docs -------------------------------------------------------------------
+
+[tool.poe.tasks.docs]
+help = "Build the documentation with MyST into _build/html"
+cmd = "uv run --group docs myst build --html"
+
+[tool.poe.tasks.docs-serve]
+help = "Serve the documentation locally (myst start)"
+cmd = "uv run --group docs myst start"
+
+[tool.poe.tasks.docs-deploy]
+help = "Build the docs and push _build/html to GitHub Pages"
+sequence = ["docs", { cmd = "uv run --group docs ghp-import -n -p _build/html" }]
+
+[tool.poe.tasks.capabilities]
+help = "Regenerate docs/api/capabilities.md (every public name, for reuse)"
+cmd = "uv run python scripts/capabilities.py"
+
+# --- GitHub housekeeping ----------------------------------------------------
+
+[tool.poe.tasks.gh-labels]
+help = "Bootstrap the GitHub label taxonomy (idempotent)"
+cmd = "bash .github/scripts/create-labels.sh"
+
+[tool.poe.tasks.gh-sub]
+help = "Link CHILDREN as sub-issues of PARENT (e.g. poe gh-sub 7 42 43 44)"
+cmd = "bash .github/scripts/link-issues.sh sub ${parent} ${children}"
+args = [
+    { name = "parent", positional = true, required = true, help = "Parent issue number" },
+    { name = "children", positional = true, multiple = true, required = true, help = "Child issue numbers" },
+]
+
+[tool.poe.tasks.gh-block]
+help = "Mark ISSUE as blocked by BLOCKED_BY (e.g. poe gh-block 44 43)"
+cmd = "bash .github/scripts/link-issues.sh block ${issue} ${blocked_by}"
+args = [
+    { name = "issue", positional = true, required = true, help = "The blocked issue" },
+    { name = "blocked_by", positional = true, required = true, help = "The blocking issue" },
+]
+
+[tool.poe.tasks.gh-show]
+help = "Show parent / sub-issues / blocking / blocked-by for ISSUE"
+cmd = "bash .github/scripts/link-issues.sh show ${issue}"
+args = [{ name = "issue", positional = true, required = true, help = "Issue number" }]

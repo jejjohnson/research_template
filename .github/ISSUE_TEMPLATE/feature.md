@@ -109,8 +109,8 @@ Suggested prompts:
 ## Definition of Done
 - [ ] Code lands at the intended path
 - [ ] Public API exported via `src/<package>/__init__.py` (if user-facing)
-- [ ] Tests pass: `make test`
-- [ ] Lint + typecheck pass: `make lint && make typecheck`
+- [ ] Tests pass: `uv run poe test`
+- [ ] Lint + typecheck pass: `uv run poe lint && uv run poe typecheck`
 - [ ] Docstrings (Google-style) on all public symbols
 
 ## Testing
@@ -134,14 +134,14 @@ apply the native link so GitHub's UI (sub-issue panel, dependency graph,
   Parent:      → Sub-issue link. UI: Issue side-panel → Sub-issues →
                  "Create sub-issue" on the parent, or "Convert to
                  sub-issue" on the child.
-                 CLI: make gh-sub PARENT=<parent#> CHILDREN="<this#>"
+                 CLI: uv run poe gh-sub <parent#> <this#>
 
   Blocked by:  → Typed dependency. UI: side-panel → Development →
                  "Mark as blocked by".
-                 CLI: make gh-block ISSUE=<this#> BLOCKED_BY=<other#>
+                 CLI: uv run poe gh-block <this#> <other#>
 
   Blocks:      → Inverse of Blocked by; apply on the OTHER issue.
-                 CLI: make gh-block ISSUE=<other#> BLOCKED_BY=<this#>
+                 CLI: uv run poe gh-block <other#> <this#>
 
   Related:     → No native feature; mention only.
 

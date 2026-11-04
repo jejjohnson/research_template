@@ -99,10 +99,10 @@ Rename if the content warrants ("Numerical Considerations",
 Each prose line has a native GitHub feature — apply it after the issue
 is opened so GitHub's UI and automation pick up the hierarchy.
 
-  Parent:      → Sub-issue link.  make gh-sub PARENT=<parent#> CHILDREN="<this#>"
-  Blocked by:  → Typed dependency.  make gh-block ISSUE=<this#> BLOCKED_BY=<other#>
+  Parent:      → Sub-issue link.  uv run poe gh-sub <parent#> <this#>
+  Blocked by:  → Typed dependency.  uv run poe gh-block <this#> <other#>
   Blocks:      → Inverse — apply on the OTHER issue.
-                 make gh-block ISSUE=<other#> BLOCKED_BY=<this#>
+                 uv run poe gh-block <other#> <this#>
   Related:     → Prose only; no native feature.
 
 Helper: `.github/scripts/link-issues.sh`.

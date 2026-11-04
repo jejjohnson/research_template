@@ -27,7 +27,7 @@ Rename to "Canonical Child Issues" if that reads more naturally.
 
 After opening this epic and its children, link each child issue below
 as a SUB-ISSUE of this epic. One-shot:
-    make gh-sub PARENT=<this#> CHILDREN="<child1#> <child2#> <child3#>"
+    uv run poe gh-sub <this#> <child1#> <child2#> <child3#>
 -->
 - [ ] #<issue> — <short description>
 - [ ] #<issue> — <short description>
@@ -69,9 +69,9 @@ or which equations the child issues are expected to implement.
 ## Relationships
 <!--
 After opening, apply native links:
-  Parent (wave):  make gh-sub PARENT=<wave#> CHILDREN="<this#>"
-  Sub-issues:     make gh-sub PARENT=<this#> CHILDREN="<child1#> <child2#>"
-  Blocked by:     make gh-block ISSUE=<this#> BLOCKED_BY=<other-theme#>
+  Parent (wave):  uv run poe gh-sub <wave#> <this#>
+  Sub-issues:     uv run poe gh-sub <this#> <child1#> <child2#>
+  Blocked by:     uv run poe gh-block <this#> <other-theme#>
 Helper: `.github/scripts/link-issues.sh`.
 -->
 - Parent: #<wave-epic>

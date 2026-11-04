@@ -1,11 +1,13 @@
 ---
 name: create-gh-issue
-description: Open GitHub issues on this repo from the templates in .github/ISSUE_TEMPLATE/, with labels, milestone and relationships. Use when asked to file / open an issue (feature, design, bug, research, epic) or to publish drafted backlog issues.
+description: Open GitHub issues on this repo from the templates in .github/ISSUE_TEMPLATE/, with labels, milestone and relationships, over the REST API. Use when asked to file / open an issue (feature, design, bug, research, epic) or to publish drafted backlog issues.
 ---
 
-Open GitHub issues using this project's issue templates, with correct labels, milestone, and relationships applied.
+Open GitHub issues on this repo from its issue templates, with the right labels, milestone and relationships.
 
-Use this skill when the user asks to file an issue, open an issue, create a feature / design / bug / research / epic, or when publishing draft issues from a wave-backlog file into real GitHub issues. It pairs with `link-gh-issues` for applying native sub-issue and blocked-by links after creation.
+This is the repo's copy of the maintainer's `report` and `gh-issue` skills (jejagents): `report` decides what goes in the body, `gh-issue` how it is filed. Use them for any other repo. Here, the templates, labels and milestones below win, and links go through `link-gh-issues`.
+
+Everything uses `gh api` over REST, because GraphQL (and so `gh issue create`, `gh issue list` and `gh project`) is blocked in Claude sessions. On your own machine both work.
 
 ## When to invoke
 
@@ -13,60 +15,56 @@ Use this skill when the user asks to file an issue, open an issue, create a feat
 - "Create a feature issue for a NetCDF loader"
 - "Open an epic for Wave 2"
 - "Publish the drafts in `.plans/wave-1-backlog.md` as real issues"
-- "Convert this research note into a research issue"
+- "Turn this research note into a research issue"
 
-## Templates available
+## 1. Pick the template
 
-Issue templates live in `.github/ISSUE_TEMPLATE/`. Pick the one that matches the work:
+The repo's own templates in `.github/ISSUE_TEMPLATE/` win over the generic report types; use their headings and fill them with the content rules in step 3.
 
 | Template | Use when |
 |---|---|
-| `epic-wave.md` | Opening a release-scoped wave (owns a milestone; groups several Theme epics) |
-| `epic-theme.md` | Grouping related feature / design / chore issues within a wave |
-| `feature.md` | One substantial deliverable (new API, module, notebook, etc.) |
-| `design.md` | Resolving an open design question — ADR-style |
-| `bug.md` | Something isn't working |
-| `research.md` | Comparative analysis / prior-art survey → prioritized roadmap of follow-up issues |
+| `feature.md` | One deliverable: a loader, a model, an experiment, a notebook, a docs page |
+| `bug.md` | A wrong result, a crash, a pipeline that does not reproduce, with a reproduction |
+| `design.md` | An open question about an API, a contract, a dependency or a package boundary |
+| `research.md` | Map a paper, a baseline or prior art onto this project; its output is the list of follow-up issues |
+| `epic-wave.md` | A release-scoped wave (owns a milestone, groups theme epics) |
+| `epic-theme.md` | Related feature / design / chore issues within a wave |
 
-If unsure, ask the user before proceeding. Default for ambiguous "add X" requests is `feature.md`.
+"Add X" defaults to a feature. A feature that needs a decision first becomes a design issue plus a feature blocked by it. A research issue never does the work itself.
 
-## Decision tree for picking a template
+## 2. Confirm scope
 
+Before filing, confirm these with the user (or infer them and echo them back):
+
+1. **Template** (step 1).
+2. **Title**, following the template's `title:` frontmatter and the repo's recent titles (`gh api "repos/$R/issues?state=all&per_page=20" --jq '.[] | select(.pull_request|not) | .title'`):
+   - Feature: `<scope>: <outcome>`, e.g. `feat(data): netcdf loader for the sst archive`
+   - Bug: `bug: <what goes wrong>`
+   - Design: `[Design] <the question>`
+   - Research: `research: <topic>`
+   - Epics: `[EPIC] Wave N: <title>` and `[EPIC] <theme title>`
+
+   Subjects are lowercase and say the outcome, not the activity.
+3. **Parent** theme or wave epic, if any.
+4. **Wave and milestone**: the `wave:*` label and the `vX.Y-<slug>` milestone.
+5. **Other labels**: `area:*` and `priority:*` (step 4).
+
+Then check for duplicates, searching titles and bodies of open and closed issues for the key name or phrase:
+
+```bash
+R=jejjohnson/<repo>
+gh api --paginate "repos/$R/issues?state=all&per_page=100" \
+  --jq '.[] | select(.pull_request|not) | "\(.number) \(.state) \(.title)"' \
+  | grep -i "<term>"
 ```
-Does the user want to resolve an open API / architectural question?      → design.md
-Is the user describing broken behaviour + reproduction?                   → bug.md
-Is the user asking for a survey of external repos / papers / prior art?  → research.md
-Is the user planning a release or multi-issue phase?                      → epic-wave.md
-Is the user grouping related issues under a wave?                         → epic-theme.md
-Otherwise (substantial single deliverable)                                → feature.md
-```
 
-## Step-by-step workflow
+A stale match is edited in place and re-parented, not closed and refiled; a partial match is linked as `Related`.
 
-### Step 1 — Confirm scope with the user
+## 3. Write the body
 
-Before opening any issue, confirm these five inputs with the user (or infer from context and echo back):
+Read `.github/ISSUE_TEMPLATE/<template>.md` and use it as the scaffold. Strip the YAML frontmatter and the pure-guidance HTML comments (`<!-- Delete if not needed. -->`); keep a comment only if it helps the filled-in body.
 
-1. **Template** — which of the six (see table above)
-2. **Title** — follow the template's title convention:
-   - Feature / chore: `<scope>: <short description>` — e.g. `feat(data): NetCDF loader for the SST archive`
-   - Design: `[Design] <question>` — e.g. `[Design] per-parameter prior: pytree vs scalar`
-   - Research: `research: <topic>` — e.g. `research: published SST downscaling baselines vs this project`
-   - Bug: `bug: <short description>`
-   - Epic wave: `[EPIC] Wave N: <title>`
-   - Epic theme: `[EPIC] <theme title>`
-3. **Parent theme/wave epic** (if any) — the issue number this child rolls up to
-4. **Wave / milestone** — which `wave:*` label + which `vX.Y-<slug>` milestone
-5. **Additional labels** — which `area:*` and `priority:*` apply (see Step 4)
-
-### Step 2 — Draft the body
-
-Read the template file at `.github/ISSUE_TEMPLATE/<template>.md` and use it as the scaffold. Strip:
-
-- The YAML frontmatter (`---` block at the top)
-- HTML comments that are pure guidance (e.g. `<!-- Delete if not needed. -->`) — keep comments that describe what the section contains if the filled-in body would benefit from the note
-
-Fill in sections according to the template's intent. **Minimum required sections** (never leave empty):
+Never leave these sections empty:
 
 | Template | Required |
 |---|---|
@@ -77,29 +75,33 @@ Fill in sections according to the template's intent. **Minimum required sections
 | `epic-wave.md` | Goal, Motivation, Theme Epics, Definition of Done (Wave), Relationships |
 | `epic-theme.md` | Theme, Parent Wave, Issues, Definition of Done, Relationships |
 
-**Optional / renameable sections** on `feature.md` and `design.md`:
+On `feature.md` and `design.md`, `## Design Snapshot` and `## Mathematical Notes` may be renamed to fit (`## Demo To Implement`, `## Equations To Test`) or deleted.
 
-- `## Design Snapshot` — rename to fit the content (e.g. `## Demo To Implement`, `## Demo Snippet To Include`, `## Config Snippet`, `## Reference Trace`, `## Prior Art Snippets`). Lead with the exact code / config the implementer will reproduce. Delete the section if not relevant.
-- `## Mathematical Notes` — rename if warranted (`## Numerical Notes`, `## Stability Notes`, `## Equations To Test`). Delete if not relevant.
+Content rules (from `report`):
 
-### Step 3 — Apply the style conventions
+- **Self-contained.** Someone with only the issue, a person or an agent, can act on it without opening other repos, chats or docs. Paste the API, the equations and the reproduction; link only for depth.
+- **Point first.** Each section opens with its point in one sentence.
+- **Prose.** Not hard-wrapped; one sentence per line, sentences under 25 words, no "robust", "seamless" or "leverage". Numbers carry units.
+- **Maths** follows `eman-style-math`: define every symbol, with its shape, before its first use; inline maths in Unicode (σ², Σ⁻¹, ∑) or `$…$`; display maths in a `math` fence, never `$$` mid-line; no custom macros on GitHub.
+- **Code.** Lead the Design Snapshot and Proposed API with the exact snippet the implementer will reproduce. Sketches follow `code-sketch` (a shapes header, the equation above each line, a status marker on every call: `today (myproject)`, `proposed (#N)`, `user`); code that will ship follows `python-style`.
+- **Concrete steps.** Each implementation step names the file and the function: "Add `load_sst` in `src/myproject/data/loading.py`".
+- **Recommend, then offer the alternative.** "Recommended: …" and "Alternative: …", one line each.
+- **Evidence is marked, not blocked.** A claim checked in the code cites the name and file at a commit; a reproduction starts with `# verified: <date>` or `# not run`; a number says where it came from (a test, a notebook, a paper with DOI or arXiv id, or `(estimate)`); anything else unchecked ends with `(unverified)`. Never invent a reference, a name or a number to fill a section; leave `(unverified)` or `TODO`.
+- **Relationships.** End with the `## Relationships` block (`Parent`, `Blocked by`, `Blocks`, `Related`), even when native links are applied too.
 
-- **Unicode math in prose** — prefer `σ²`, `E₁`, `∑`, `⊗`, `≈`, `Λ⁻¹`, `∂/∂x`, `O(d³)` over LaTeX / MathJax blocks. Keeps the issue readable in the GH UI and plain-text tools.
-- **`text`-tagged code fences for multi-line equations** so pseudo-math isn't syntax-highlighted as Python. Wrap the example in a 4-backtick outer fence so the nested triple-backtick block renders intact:
+When the body has maths and the `eman-style-math` skill is installed, expand its macros and check the body before filing:
 
-  ````
-  ```text
-  s_next   = (1 - ρ) · s   + ρ · (s₀   - h)
-  η_next   = (1 - ρ) · η   + ρ · (η₀ + g - h ⊙ m)
-  ```
-  ````
+```bash
+uv run --with cyclopts --with loguru --with pyyaml python ~/.claude/skills/eman-style-math/scripts/expand_macros.py body.md
+```
 
-- **Code-first, prose-last** — Design Snapshot and Proposed API should LEAD with the exact snippet the implementer will reproduce; prose goes after.
-- **Concrete implementation steps** — each step should name the file path + function, not a generic `...`. Example: `Add \`load_sst\` in \`src/myproject/data/loading.py\``
+```bash
+uv run --with cyclopts --with loguru --with pyyaml python ~/.claude/skills/eman-style-math/scripts/check_math.py body.md --target github
+```
 
-### Step 4 — Pick labels
+## 4. Pick labels
 
-Every issue carries exactly one `type:*`, one or more `area:*`, one `wave:*`, and one `priority:*`. Common combinations (add the `priority:*` and `wave:*` that fit):
+Every issue carries exactly one `type:*`, one or more `area:*`, one `wave:*` and one `priority:*`. Apply only labels that exist (`gh api "repos/$R/labels?per_page=100" --jq '.[].name'`).
 
 | Work type | Labels |
 |---|---|
@@ -113,83 +115,73 @@ Every issue carries exactly one `type:*`, one or more `area:*`, one `wave:*`, an
 | Research / literature survey | `type:research`, the relevant area |
 | Engineering / CI / packaging / DVC remote | `type:chore`, `area:engineering`, `wave:0` |
 
-The labels come from `.github/scripts/create-labels.sh` (`make gh-labels`): `type:{epic-wave,epic-theme,feature,bug,design,chore,docs,research}`, `area:{engineering,testing,docs,data,models,experiments,code}`, `dependencies`, `wave:0`…`wave:4`, `priority:{p0,p1,p2}`. `CONTRIBUTING.md` describes the taxonomy and the epic model; `gh label list` shows what exists and `gh api repos/:owner/:repo/milestones` the milestones.
+The labels come from `.github/scripts/create-labels.sh` (`uv run poe gh-labels`): `type:{epic-wave,epic-theme,feature,bug,design,chore,docs,research}`, `area:{engineering,testing,docs,data,models,experiments,code}`, `dependencies`, `wave:0`…`wave:4`, `priority:{p0,p1,p2}`. `CONTRIBUTING.md` describes the taxonomy and the epic model; `gh label list` shows what exists and `gh api repos/:owner/:repo/milestones` the milestones.
 
-### Step 5 — Create the issue
+## 5. Create
 
-**CLI path (preferred for drafted bodies):**
-
-Write the drafted body to a temporary file, then:
+Write the body to a file; never pass code fences through a command-line string. The REST API takes the milestone's **number**, so look it up by title first:
 
 ```bash
-gh issue create \
-  --title "feat(data): NetCDF loader for the SST archive" \
-  --body-file /tmp/issue-body.md \
-  --label "type:feature,area:data,wave:1,priority:p1" \
-  --milestone "v0.2-<slug>"
+gh api "repos/$R/milestones?state=open" --jq '.[] | "\(.number) \(.title)"'
 ```
-
-Returns the new issue's URL; extract the number (e.g. `#42`) for the next step.
-
-**UI path (when the user wants to review in the browser):**
 
 ```bash
-gh issue create --web
+gh api repos/$R/issues \
+  -f title="feat(data): netcdf loader for the sst archive" \
+  -F body=@body.md \
+  -f "labels[]=type:feature" -f "labels[]=area:data" \
+  -f "labels[]=wave:1" -f "labels[]=priority:p1" \
+  -F milestone=<milestone number> \
+  --jq '"\(.number) \(.id) \(.html_url)"'
 ```
 
-Opens `/issues/new/choose` so the user picks the template in the UI, fills in the body, and clicks Submit. Note: `gh issue create --web` does NOT respect `--template` — that flag only applies to the non-web flow (where it's used as starting body text). There is no CLI path to pre-select a template for the web flow; the user has to click the template card in the browser.
+Keep both numbers from the result: `number` for people and links in text, `id` for the link endpoints.
 
-**Notes:**
-- The `--body-file` path must point to a file containing the post-template body (frontmatter + guidance comments stripped).
-- If the user has draft body content in a `.plans/*.md` file, extract the single issue's body section and write it to a temp file before passing to `--body-file`.
+To edit an existing issue: `gh api -X PATCH repos/$R/issues/<n> -F body=@body.md` (and `-f title=`, `-f state=closed`, `-f "labels[]=…"`).
 
-### Step 6 — Apply relationships
+When the user wants to review in the browser instead, `gh issue create --web` opens the template chooser (on their own machine; it needs GraphQL).
 
-After the issue is created, apply the native GitHub links using the `link-gh-issues` skill (or its underlying helpers):
+## 6. Link
+
+Apply the native links with `link-gh-issues`:
 
 ```bash
-# Link the new issue as a sub-issue of its theme epic
-make gh-sub PARENT=<theme-epic#> CHILDREN="<new-issue#>"
-
-# If the issue is blocked by another
-make gh-block ISSUE=<new-issue#> BLOCKED_BY=<blocker#>
+uv run poe gh-sub <theme-epic#> <new-issue#>     # sub-issue of its theme epic
+uv run poe gh-block <new-issue#> <blocker#>      # blocked by another issue
 ```
 
-Keep the prose `## Relationships` lines in the body — they coexist with the native links.
+Keep the prose `## Relationships` lines in the body; they coexist with the native links.
 
-### Step 7 — Verify
+## 7. Report back
 
-Confirm the filed issue by URL + a one-line summary. If opening multiple issues from a backlog, echo a mapping:
+One issue: its URL and a one-line summary. Several: a draft → issue table, plus anything skipped (an existing duplicate, a label that does not exist, a link that failed):
 
 ```
-Draft ID  → GH issue
+Draft ID  → issue
 RP-05     → #42   feat(data): ...
 RP-06     → #43   feat(models): ...
 ```
 
-## Bulk workflow — publishing a wave-backlog
+## Publishing a wave backlog
 
-When the user has a `.plans/<wave>-backlog.md` file drafted from `docs/templates/wave-backlog.md`:
+When the user has a `.plans/<wave>-backlog.md` drafted from `docs/templates/wave-backlog.md`:
 
-1. **Parse** the backlog into discrete issue sections. Each draft starts with `# <title>` followed by `Draft ID: \`<PREFIX>-NN\``. Sections are separated by `---`.
-2. **Identify** which template each draft corresponds to (epic-wave → body starts with `## Goal`; epic-theme → `## Theme`; feature → `## Problem / Request`; design → `## Problem / Question`; research → `## Context` with `## 1.` numbered sections).
-3. **Open the wave epic first** (so its issue number exists before theme epics reference it).
-4. **Open theme epics next** (so their numbers exist before feature / design issues reference them).
-5. **Open leaf issues** (feature / design / bug / research).
-6. **Record** the mapping `<PREFIX>-NN → #issue-number` as you go.
-7. **Replace draft-ID cross-references** in each issue's body with real GH numbers BEFORE creating (so `Parent: RP-03` becomes `Parent: #41`, etc.). This requires two passes: parse all draft IDs first, create issues, then substitute. OR: create issues with draft IDs as placeholders, then `gh issue edit` each one to rewrite references after all are opened. Either works — the two-pass version keeps each created issue's body already clean.
-8. **Apply native links** using `link-gh-issues` for the whole wave once all issues exist.
-9. **Update the backlog file** — replace draft IDs with GH issue numbers throughout, or archive the file to `.plans/archive/`.
+1. Split the backlog into drafts: each starts with `# <title>` and `Draft ID: \`<PREFIX>-NN\``, and drafts are separated by `---`.
+2. Match each draft to its template by its first section (`## Goal` → epic-wave, `## Theme` → epic-theme, `## Problem / Request` → feature, `## Problem / Question` → design, `## Context` with numbered `## 1.` sections → research).
+3. Run the maths check on every body.
+4. Create the wave epic first, then the theme epics, then the leaf issues, recording draft ID → number → id as you go. Pace the calls, about a second apart, to avoid secondary rate limits.
+5. Replace draft IDs in the bodies with `#numbers` and PATCH each body.
+6. Apply the sub-issue and blocked-by links with `link-gh-issues`, then read them back.
+7. Replace the draft IDs in the backlog file too, or move it to `.plans/archive/`.
 
 ## Common pitfalls
 
-- **Missing label** — `gh issue create --label` fails ("could not add label") and creates nothing if the label doesn't exist. Run `make gh-labels` first on a fresh repo.
-- **Missing milestone** — same. `gh api repos/:owner/:repo/milestones --method POST -f title="vX.Y-<slug>"` to create.
-- **Template frontmatter in the body** — `gh issue create --body-file` renders the frontmatter block as literal text. Strip the `---` block before writing the temp file.
-- **Shell-escaped backticks** — do NOT escape backticks when passing a body via `--body`. Use `--body-file` with a temp file for any body containing code fences or backticks. Heredocs with single-quoted delimiters (`<<'EOF'`) also preserve backticks correctly.
-- **Wrong milestone number** — milestones are referenced by title (`--milestone "v0.2-<slug>"`), not number. `gh milestone list` (via `gh api`) to confirm titles exist.
+- **Missing label:** the create call fails with a 422. Run `uv run poe gh-labels` on a fresh repo.
+- **Missing milestone:** create it with `gh api repos/$R/milestones -f title="vX.Y-<slug>"`, then use its number.
+- **Frontmatter in the body:** strip the template's `---` block before writing the body file.
+- **Backticks:** pass bodies with `-F body=@file`, never inline, so code fences survive.
 
 ## Related skills
 
-- [`link-gh-issues`](../link-gh-issues/SKILL.md) — Apply native sub-issue and blocked-by links after issues are created. Invoke after this skill finishes creating issues.
-- [`squash-commit`](../squash-commit/SKILL.md) — Generate a squash commit message when merging an issue's PR.
+- [`link-gh-issues`](../link-gh-issues/SKILL.md): native sub-issue and blocked-by links, after the issues exist.
+- [`squash-commit`](../squash-commit/SKILL.md): the squash commit message when the issue's PR merges.

@@ -38,7 +38,7 @@ labels: ["type:bug"]
 ## Definition of Done
 - [ ] Regression test captures the bug
 - [ ] Fix lands; regression test green
-- [ ] `make test && make lint && make typecheck` green
+- [ ] `uv run poe test && uv run poe lint && uv run poe typecheck` green
 
 ## Testing
 - [ ] Regression test at `tests/<path>::<name>` — asserts <what>
@@ -50,9 +50,9 @@ labels: ["type:bug"]
 ## Relationships
 <!--
 Apply the native GitHub links after the issue is opened:
-  Parent:      make gh-sub PARENT=<parent#> CHILDREN="<this#>"
-  Blocked by:  make gh-block ISSUE=<this#> BLOCKED_BY=<other#>
-  Blocks:      make gh-block ISSUE=<other#> BLOCKED_BY=<this#>
+  Parent:      uv run poe gh-sub <parent#> <this#>
+  Blocked by:  uv run poe gh-block <this#> <other#>
+  Blocks:      uv run poe gh-block <other#> <this#>
 Helper: `.github/scripts/link-issues.sh`.
 -->
 - Parent (theme epic, if any): #

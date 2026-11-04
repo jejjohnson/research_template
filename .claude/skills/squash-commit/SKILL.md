@@ -5,11 +5,11 @@ description: Write a Conventional-Commits squash commit message for a pull reque
 
 Generate a squash commit message for a GitHub PR.
 
+This is the repo's copy of the maintainer's `/squash-commit` command (jejagents), with this repo's types, scopes and release rules.
+
 ## Instructions
 
-1. If an argument is provided (PR number or URL), fetch the PR details
-   (`gh pr view`, or the GitHub MCP tools). Otherwise, detect the current
-   branch and find its open PR.
+1. If an argument is provided (PR number or URL), fetch the PR details (`gh pr view`, or the GitHub MCP tools). Otherwise, detect the current branch and find its open PR.
 2. Fetch all individual commit messages in the PR (`gh api` or `git log`).
 3. Combine them into a single squash commit message following these rules.
 
@@ -21,33 +21,20 @@ Generate a squash commit message for a GitHub PR.
 <1-3 sentence description combining the key changes from all commits.
 Focus on the "why" and overall effect, not per-commit details.>
 
-Co-authored-by: <preserve all unique Co-authored-by lines from the individual commits>
+Co-authored-by: <every unique human Co-authored-by line from the individual commits>
 ```
 
 ### Rules
 
-- Conventional Commits types: `feat`, `fix`, `docs`, `style`, `refactor`,
-  `perf`, `test`, `build`, `ci`, `chore`, `revert`; a lowercase subject
-  (`conventional-commits.yml` checks PR titles). The scope is usually the
-  area: `data`, `models`, `trainers`, `utils` (the package), `configs`,
-  `pipeline` (`dvc.yaml`, stages), `experiments`, `notebooks`, `docs`,
-  `deps`, `ci`, `agents`. <!-- template-example: the package scopes are the example's subpackages. -->
-- release-please (`release-please-config.json`, one Python package at `.`)
-  builds `CHANGELOG.md` and the version bump from these messages: `feat` is
-  a minor bump (a patch bump while the version is below 1.0, since
-  `bump-patch-for-minor-pre-major` is set), `fix` a patch bump, and a
-  breaking change a major bump (minor below 1.0). So the type decides
-  whether and how a change is released.
-- The type/scope reflect the dominant change across all commits; mention the
-  rest in the body.
+- Conventional Commits types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`; a lowercase subject (`conventional-commits.yml` checks PR titles). The scope is usually the area: `data`, `models`, `trainers`, `utils` (the package), `configs`, `pipeline` (`dvc.yaml`, stages), `experiments`, `notebooks`, `docs`, `deps`, `ci`, `agents`. <!-- template-example: the package scopes are the example's subpackages. -->
+- release-please (`release-please-config.json`, one Python package at `.`) builds `CHANGELOG.md` and the version bump from these messages: `feat` is a minor bump (a patch bump while the version is below 1.0, since `bump-patch-for-minor-pre-major` is set), `fix` a patch bump, and a breaking change a major bump (minor below 1.0). So the type decides whether and how a change is released.
+- The type/scope reflect the dominant change across all commits; mention the rest in the body.
 - A breaking change keeps its `!` and `BREAKING CHANGE:` footer.
 - Collapse redundant or incremental commits into one coherent description.
-- Preserve ALL unique `Co-authored-by` lines.
+- Preserve every unique `Co-authored-by` line for a person. Drop AI attribution (`Co-Authored-By: Claude …`, `Claude-Session:`, "Generated with …") unless the maintainer asks to keep it.
 - Keep the summary line under 72 characters.
-- Do NOT list the individual commit messages as bullet points — this is a
-  squash, not a merge.
+- Do NOT list the individual commit messages as bullet points — this is a squash, not a merge.
 
 ### Output
 
-Print ONLY the final squash commit message in a code block so the user can
-copy it directly. Do not add explanation before or after.
+Print ONLY the final squash commit message in a code block so the user can copy it directly. Do not add explanation before or after.

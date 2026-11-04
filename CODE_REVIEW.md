@@ -1,15 +1,6 @@
 # Code Review Agent Instructions
 
-Standing instructions for **all** agents performing code reviews on this
-repository. This is a research project: most defects worth finding are about
-**reproducibility** (a hard-coded hyperparameter that bypasses the configs, an
-unseeded draw, a DVC stage that does not declare what it reads, a metric
-written somewhere the pipeline does not look, statistics leaking from the
-test split into training) or about **where code lives** (a loader or a
-training loop re-implemented in a script or a notebook instead of reused from
-the package), not style. Read "Boundaries", "Reuse before you write" and
-"The contracts" in [`AGENTS.md`](AGENTS.md) first; this file is the
-checklist and the report format.
+Standing instructions for **all** agents performing code reviews on this repository. This is a research project: most defects worth finding are about **reproducibility** (a hard-coded hyperparameter that bypasses the configs, an unseeded draw, a DVC stage that does not declare what it reads, a metric written somewhere the pipeline does not look, statistics leaking from the test split into training) or about **where code lives** (a loader or a training loop re-implemented in a script or a notebook instead of reused from the package), not style. Read "Boundaries", "Reuse before you write" and "The contracts" in [`AGENTS.md`](AGENTS.md) first; this file is the checklist and the report format.
 
 ---
 
@@ -41,93 +32,55 @@ git --no-pager diff --no-prefix --unified=100000 --minimal "$BASE_BRANCH"...HEAD
 
 ## Review Checklist
 
-Skip anything ruff, ty or the tests already enforce (formatting, import
-order, unused imports); review what they cannot see.
+Skip anything ruff, ty or the tests already enforce (formatting, import order, unused imports); review what they cannot see.
 
 ### 1. Reuse and where code lives
 
-- Every function, class or module the diff **adds** has been checked against
-  [`docs/api/capabilities.md`](docs/api/capabilities.md). A loader, model,
-  training loop, seeding helper or metric re-implemented in a script or a
-  notebook is a **High** finding, with the existing name to use.
-- Reusable logic is in the package (`src/<package>/`), with a test; scripts
-  only read the config, call the package and write outputs; notebooks
-  import from the package.
-- The package does not import Hydra, DVC, a script or a notebook, and does
-  not read a `DictConfig`; it takes plain arguments.
-- A new public name is in the regenerated capability index
-  (`make capabilities`).
+- Every function, class or module the diff **adds** has been checked against [`docs/api/capabilities.md`](docs/api/capabilities.md). A loader, model, training loop, seeding helper or metric re-implemented in a script or a notebook is a **High** finding, with the existing name to use.
+- Reusable logic is in the package (`src/<package>/`), with a test; scripts only read the config, call the package and write outputs; notebooks import from the package.
+- The package does not import Hydra, DVC, a script or a notebook, and does not read a `DictConfig`; it takes plain arguments.
+- A new public name is in the regenerated capability index (`uv run poe capabilities`).
 
 ### 2. Configs
 
-- No hyperparameter, seed, split fraction, path or model choice written as
-  a literal in a script or notebook: it is a key in `configs/`, read from
-  `cfg`, with its default in the YAML.
-- A new config group option provides every key the scripts read from that
-  group; a renamed key is renamed everywhere it is read (scripts,
-  `dvc.yaml` `params`, notebooks, docs).
-- The hydra-zen entry point and the YAML configs still configure the same
-  objects with the same defaults.
+- No hyperparameter, seed, split fraction, path or model choice written as a literal in a script or notebook: it is a key in `configs/`, read from `cfg`, with its default in the YAML.
+- A new config group option provides every key the scripts read from that group; a renamed key is renamed everywhere it is read (scripts, `dvc.yaml` `params`, notebooks, docs).
+- The hydra-zen entry point and the YAML configs still configure the same objects with the same defaults.
 - Sweeps (`-m`) do not write every job's result to the same path.
 
 ### 3. The DVC pipeline
 
-- Every stage lists as `deps` its script, the package modules it imports
-  and the data it reads; as `params` the config keys it uses (keys that
-  exist in the params file); as `outs` / `metrics` / `plots` exactly what
-  the script writes.
-- No output path contains a file git tracks; no data or result file is
-  committed to git; `.dvc` pointers and `dvc.lock` are committed with the
-  change that produced them.
+- Every stage lists as `deps` its script, the package modules it imports and the data it reads; as `params` the config keys it uses (keys that exist in the params file); as `outs` / `metrics` / `plots` exactly what the script writes.
+- No output path contains a file git tracks; no data or result file is committed to git; `.dvc` pointers and `dvc.lock` are committed with the change that produced them.
 - A new script that produces results is a stage, not a manual step.
 
 ### 4. Reproducibility and data hygiene
 
-- One seed per run, from the config (`seed_everything`, or an explicit
-  `np.random.default_rng(seed)` passed down); no unseeded draws, no
-  global-state RNG calls inside the package.
-- Splits are made once, before any fitting, from config fractions and the
-  seed; normalisation statistics, vocabularies, imputers and feature
-  selection are fitted on the training split only; nothing tuned on the
-  test split.
-- Order-dependent operations are deterministic (sorted file listings,
-  stable sorts, `set` iteration not relied on); non-deterministic GPU
-  kernels are called out.
-- Metrics are written as JSON to the path `dvc.yaml` declares, with keys
-  that `dvc metrics diff` and the results notebook read.
-- Paths are `pathlib.Path`, built from the project root (or an argument),
-  never from the current working directory Hydra may change.
+- One seed per run, from the config (`seed_everything`, or an explicit `np.random.default_rng(seed)` passed down); no unseeded draws, no global-state RNG calls inside the package.
+- Splits are made once, before any fitting, from config fractions and the seed; normalisation statistics, vocabularies, imputers and feature selection are fitted on the training split only; nothing tuned on the test split.
+- Order-dependent operations are deterministic (sorted file listings, stable sorts, `set` iteration not relied on); non-deterministic GPU kernels are called out.
+- Metrics are written as JSON to the path `dvc.yaml` declares, with keys that `dvc metrics diff` and the results notebook read.
+- Paths are `pathlib.Path`, built from the project root (or an argument), never from the current working directory Hydra may change.
 
 ### 5. Notebooks, docs and citation
 
-- Notebooks are jupytext percent-format `.py` (in `notebooks/`) or marimo
-  apps (in `marimo_notebooks/`); no `.ipynb` is added; a figure used by the
-  docs is saved under `docs/images/<notebook_name>/` and committed with it.
-- A number or figure quoted in the docs comes from a pipeline output or a
-  notebook that reads one.
-- A new page is in the `myst.yml` toc; references are BibTeX entries in
-  `references.bib` cited with `[@key]`; `CITATION.cff` is updated when the
-  authors, title or version change.
+- Notebooks are jupytext percent-format `.py` (in `notebooks/`) or marimo apps (in `marimo_notebooks/`); no `.ipynb` is added; a figure used by the docs is saved under `docs/images/<notebook_name>/` and committed with it.
+- A number or figure quoted in the docs comes from a pipeline output or a notebook that reads one.
+- A new page is in the `myst.yml` toc; references are BibTeX entries in `references.bib` cited with `[@key]`; `CITATION.cff` is updated when the authors, title or version change.
 
 ### 6. Tests
 
-- New package code has tests in `tests/` against a hand computation, a
-  closed form or a small fixture (`tmp_path` for files); no network, no
-  real data, well under a second each.
-- Incidental randomness is seeded; a test on a random quantity bounds it by
-  its sampling distribution, with the bound's source in a comment.
+- New package code has tests in `tests/` against a hand computation, a closed form or a small fixture (`tmp_path` for files); no network, no real data, well under a second each.
+- Incidental randomness is seeded; a test on a random quantity bounds it by its sampling distribution, with the bound's source in a comment.
 
 ### 7. Python, dependencies and security
 
-- Type hints on every public function; `X | None`; specific exceptions
-  with `raise … from …`; guard clauses over deep nesting; Google-style
-  docstrings with the formula for a scientific computation (Unicode, e.g.
-  `σ² = Σ(xᵢ − μ)² / N`).
-- A new runtime dependency is in `pixi.toml` with `pixi.lock` regenerated
-  (and in `pyproject.toml`'s `dependencies` when the package imports it);
-  nothing is installed by hand.
-- No credentials, tokens or DVC remote secrets in the diff (they belong in
-  `.env` or `.dvc/config.local`, both gitignored).
+- Type hints on every public function; `X | None`; specific exceptions with `raise … from …`; guard clauses over deep nesting; Google-style docstrings in the `python-style` layout with the defining equation in Unicode (`σ² = ∑ᵢ (xᵢ − μ)² / N`, `eman-style-math`; `$…$` in a docstring is a finding)
+- `python-style` comments and naming: comments above the line, never beside it; a Unicode equation above each mathematical line; descriptive names, with the symbol only in the comment; one operation per line. In JAX code, its JAX rules too.
+- New non-Hydra CLIs and scripts use `cyclopts` and `loguru`, not argparse, click, typer, `print` progress or stdlib `logging`.
+- Maths in MyST pages and notebook markdown uses the `eman-style-math` macros, defines every symbol with its shape, keeps each expression on one line and has no spacing macros (`\,`, `\quad`, …); write-ups follow `eman-prose-tech` and never state a number the pipeline did not produce.
+- A new runtime dependency is in `pixi.toml` with `pixi.lock` regenerated (and in `pyproject.toml`'s `dependencies` when the package imports it); nothing is installed by hand.
+- No credentials, tokens or DVC remote secrets in the diff (they belong in `.env` or `.dvc/config.local`, both gitignored).
 
 ---
 
@@ -135,8 +88,7 @@ order, unused imports); review what they cannot see.
 
 <!-- template-example: the examples use the example package (myproject); keep the patterns, rename the imports. -->
 
-The snippets below run as written from the repo root in the pixi
-environment, with `cfg` composed from `configs/`:
+The snippets below run as written from the repo root in the pixi environment, with `cfg` composed from `configs/`:
 
 ```python
 from pathlib import Path
@@ -294,5 +246,4 @@ Prefix each suggestion title with a type indicator:
 - Offer **concrete alternatives**, not just criticism
 - Recognize that context matters — ask clarifying questions when needed
 - Keep feedback **actionable**: every suggestion should have a clear next step
-- Don't nitpick what linters and formatters catch, or code the change did
-  not touch
+- Don't nitpick what linters and formatters catch, or code the change did not touch

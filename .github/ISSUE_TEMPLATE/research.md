@@ -180,11 +180,11 @@ missing pieces. Delete if not useful.
 Apply native GitHub links after the issue is opened.
 
   Parent:      → Sub-issue link (research issue nested under a theme epic).
-                 make gh-sub PARENT=<parent#> CHILDREN="<this#>"
+                 uv run poe gh-sub <parent#> <this#>
   Blocks:      → Each follow-up issue from §5 should reference THIS research
                  issue as its blocker. From the follow-up:
-                 make gh-block ISSUE=<follow-up#> BLOCKED_BY=<this#>
-  Blocked by:  → make gh-block ISSUE=<this#> BLOCKED_BY=<other#>
+                 uv run poe gh-block <follow-up#> <this#>
+  Blocked by:  → uv run poe gh-block <this#> <other#>
   Related:     → Prose only; no native feature.
 
 Helper: `.github/scripts/link-issues.sh`.

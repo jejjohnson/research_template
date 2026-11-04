@@ -5,9 +5,7 @@ description: Reproduce the research project's results from a commit — install 
 
 # Reproduce the results
 
-Read contracts 3 and 4 in `AGENTS.md` first. The pipeline is `dvc.yaml`;
-`dvc.lock` records the hashes of every dependency, parameter and output of
-the last committed run, so a clean reproduction changes nothing.
+Read contracts 3 and 4 in `AGENTS.md` first. The pipeline is `dvc.yaml`; `dvc.lock` records the hashes of every dependency, parameter and output of the last committed run, so a clean reproduction changes nothing.
 
 ## 1. Environment and data
 
@@ -18,10 +16,7 @@ pixi run dvc status               # what differs from dvc.lock (nothing, after a
 pixi run dvc dag                  # the stages and their order
 ```
 
-`dvc pull` needs a configured remote (`pixi run dvc remote list`; add one
-with `pixi run dvc remote add -d <name> <url>`, credentials in
-`.dvc/config.local`). Without a remote, `dvc repro` rebuilds everything
-from the raw data in `data/raw/`.
+`dvc pull` needs a configured remote (`pixi run dvc remote list`; add one with `pixi run dvc remote add -d <name> <url>`, credentials in `.dvc/config.local`). Without a remote, `dvc repro` rebuilds everything from the raw data in `data/raw/`.
 
 ## 2. Run
 
@@ -31,8 +26,7 @@ pixi run dvc repro <stage>        # one stage and the stages it depends on
 pixi run dvc repro --force        # rerun everything, to prove it reproduces
 ```
 
-Never run the scripts by hand to produce reported results: only `dvc repro`
-records what produced them in `dvc.lock`.
+Never run the scripts by hand to produce reported results: only `dvc repro` records what produced them in `dvc.lock`.
 
 ## 3. Compare
 
@@ -44,16 +38,9 @@ pixi run dvc plots diff                   # writes dvc_plots/index.html (not com
 pixi run dvc exp show                     # experiments run from this commit
 ```
 
-A reproduction matches when `dvc status` is clean after the run, and the
-metrics equal the committed ones (exactly for deterministic CPU code;
-within a stated tolerance where GPU kernels or threads are
-non-deterministic — say which in the write-up). `dvc metrics diff`
-compares with `HEAD` only for `cache: false` metrics files committed to
-git; a `.gitignore` rule that hides them (check
-`git check-ignore -v results/metrics/<file>.json`) leaves `HEAD` empty.
+A reproduction matches when `dvc status` is clean after the run, and the metrics equal the committed ones (exactly for deterministic CPU code; within a stated tolerance where GPU kernels or threads are non-deterministic — say which in the write-up). `dvc metrics diff` compares with `HEAD` only for `cache: false` metrics files committed to git; a `.gitignore` rule that hides them (check `git check-ignore -v results/metrics/<file>.json`) leaves `HEAD` empty.
 
-Commit `dvc.lock` (and the `cache: false` metrics) after a run you keep;
-`pixi run dvc push` uploads the cached outputs.
+Commit `dvc.lock` (and the `cache: false` metrics) after a run you keep; `pixi run dvc push` uploads the cached outputs.
 
 ## 4. If it does not reproduce
 
@@ -71,6 +58,4 @@ Commit `dvc.lock` (and the `cache: false` metrics) after a run you keep;
 
 ## 5. Report
 
-Say which commit, which stages ran, whether `dvc status` is clean, and the
-metrics before and after (`dvc metrics diff`), with any tolerance and its
-source.
+Say which commit, which stages ran, whether `dvc status` is clean, and the metrics before and after (`dvc metrics diff`), with any tolerance and its source.

@@ -115,7 +115,7 @@ htmlcov/
 # lockfile is not committed.
 uv.lock
 
-# MyST build output (make docs)
+# MyST build output (uv run poe docs)
 _build/
 
 # Plans and scratch notes (see AGENTS.md)

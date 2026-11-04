@@ -7,7 +7,7 @@ under the shortest module path that exports it, with the first
 sentence of its docstring. Search this page before writing a
 loader, a model, a training step or a helper in a script or a
 notebook: if what you need is here, use it; if it is almost here,
-extend it where it lives. Regenerate with `make capabilities` after
+extend it where it lives. Regenerate with `uv run poe capabilities` after
 changing a public API (`tests/test_capabilities.py` checks it is
 current).
 
